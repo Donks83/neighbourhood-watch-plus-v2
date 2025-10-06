@@ -233,7 +233,7 @@ export default function HomePage() {
     
     try {
       const { getCommunityHeatmapCameras } = await import('@/lib/firestore')
-      const communityCameras = await getCommunityHeatmapCameras(userLocation, 5) // 5km radius
+      const communityCameras = await getCommunityHeatmapCameras(userLocation) // Global - no distance limit
       setCommunityHeatmapCameras(communityCameras)
       console.log(`🌍 Loaded ${communityCameras.length} community cameras for heatmap`)
     } catch (error) {
