@@ -454,41 +454,6 @@ export default function AdminVerificationQueue({ className }: AdminVerificationQ
                       </div>
                     </div>
                     
-                    {/* Location Verification */}
-                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                      <Label className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-3 block">
-                        📍 Camera Location Verification
-                      </Label>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <div className="text-xs text-blue-700 dark:text-blue-300 mb-1">Camera Coordinates:</div>
-                          <code className="bg-white dark:bg-gray-800 px-2 py-1 rounded text-xs block">
-                            {item.cameraLocation.coordinates.lat.toFixed(6)}, {item.cameraLocation.coordinates.lng.toFixed(6)}
-                          </code>
-                          <a 
-                            href={`https://www.google.com/maps?q=${item.cameraLocation.coordinates.lat},${item.cameraLocation.coordinates.lng}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-blue-600 hover:text-blue-800 underline mt-1 inline-block"
-                          >
-                            View on Google Maps
-                          </a>
-                        </div>
-                        <div>
-                          <div className="text-xs text-blue-700 dark:text-blue-300 mb-1">Public Display Location:</div>
-                          <code className="bg-white dark:bg-gray-800 px-2 py-1 rounded text-xs block">
-                            {item.cameraLocation.displayCoordinates.lat.toFixed(6)}, {item.cameraLocation.displayCoordinates.lng.toFixed(6)}
-                          </code>
-                          <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                            (Fuzzy location for privacy)
-                          </div>
-                        </div>
-                      </div>
-                      <div className="mt-3 text-xs text-blue-700 dark:text-blue-300">
-                        <strong>⚠️ Verify:</strong> Does this location match the registered address? Is it a reasonable place for a security camera?
-                      </div>
-                    </div>
-                    
                     {/* Action Buttons */}
                     <div className="flex justify-end gap-2 pt-4">
                       <Button
