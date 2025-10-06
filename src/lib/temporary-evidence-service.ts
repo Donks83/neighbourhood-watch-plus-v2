@@ -126,8 +126,8 @@ export class TemporaryMarkerService {
    */
   static async findMatchingMarkers(
     location: Location,
-    timeWindow: { start: Date; end: Date },
-    radius: number
+    radius: number,
+    incidentDate: Date
   ): Promise<TemporaryMarkerMatch[]> {
     // Get all active markers
     const q = query(
@@ -141,6 +141,12 @@ export class TemporaryMarkerService {
       id: doc.id,
       ...doc.data()
     })) as TemporaryEvidenceMarker[]
+
+    // Create time window (±24 hours from incident)
+    const timeWindow = {
+      start: new Date(incidentDate.getTime() - 24 * 60 * 60 * 1000),
+      end: new Date(incidentDate.getTime() + 24 * 60 * 60 * 1000)
+    }
 
     // Filter and score matches
     const matches: TemporaryMarkerMatch[] = []
@@ -163,7 +169,7 @@ export class TemporaryMarkerService {
 
       // Marker should be within the time window or close to it (±2 hours buffer)
       const buffer = 2 * 60 * 60 * 1000 // 2 hours in milliseconds
-      const timeProximity = Math.abs(recordedTime - timeStart)
+      const timeProximity = Math.abs(recordedTime - incidentDate.getTime())
       
       if (recordedTime < timeStart - buffer || recordedTime > timeEnd + buffer) {
         continue
@@ -407,69 +413,69 @@ export class NotificationPreferenceService {
 
 export class GeographicValidationService {
   /**
-   * Validate that camera location is within 2km of user's registered address
+   * Validate that camera location is within 2km of user's registered address(es)
    */
   static async validateCameraLocation(
-    userId: string,
-    cameraLocation: Location
+    cameraLocation: Location,
+    registeredAddresses: Location[],
+    maxAllowedDistance: number = 2000 // 2km in meters
   ): Promise<{
     isValid: boolean
     distance?: number
+    maxAllowedDistance: number
     reason?: string
   }> {
-    // Get user's profile with registered address
-    const userDoc = await getDoc(doc(db, 'users', userId))
-    
-    if (!userDoc.exists()) {
-      return { isValid: false, reason: 'User profile not found' }
-    }
-
-    const userData = userDoc.data()
-    const userAddress = userData.address
-
-    if (!userAddress || !userAddress.coordinates) {
+    if (!registeredAddresses || registeredAddresses.length === 0) {
       return { 
-        isValid: false, 
-        reason: 'Please set your home address in your profile first' 
+        isValid: false,
+        maxAllowedDistance,
+        reason: 'No registered addresses found' 
       }
     }
 
-    // Calculate distance from user's address
-    const distance = calculateDistance(
-      userAddress.coordinates.lat,
-      userAddress.coordinates.lng,
-      cameraLocation.lat,
-      cameraLocation.lng
-    )
+    // Check if camera is within 2km of ANY registered address
+    let minDistance = Infinity
 
-    const MAX_DISTANCE = 2000 // 2km in meters
+    for (const address of registeredAddresses) {
+      const distance = calculateDistance(
+        address.lat,
+        address.lng,
+        cameraLocation.lat,
+        cameraLocation.lng
+      )
 
-    if (distance > MAX_DISTANCE) {
+      if (distance < minDistance) {
+        minDistance = distance
+      }
+    }
+
+    if (minDistance > maxAllowedDistance) {
       return {
         isValid: false,
-        distance,
-        reason: `Camera must be within 2km of your registered address (currently ${(distance / 1000).toFixed(1)}km away)`
+        distance: minDistance,
+        maxAllowedDistance,
+        reason: `Camera must be within ${maxAllowedDistance}m of a registered address`
       }
     }
 
     return {
       isValid: true,
-      distance
+      distance: minDistance,
+      maxAllowedDistance
     }
   }
 
   /**
    * Check if location is valid for temporary marker (no restriction)
    */
-  static async validateTemporaryMarkerLocation(
-    userId: string,
+  static validateTemporaryMarkerLocation(
     markerLocation: Location
-  ): Promise<{
+  ): {
     isValid: boolean
     reason?: string
-  }> {
+  } {
     // Temporary markers (mobile/dashcam) have no geographic restriction
-    // But we validate the location is reasonable (within UK, for example)
+    // But we validate the location is reasonable
     
     // Basic validation - check coordinates are valid
     if (
@@ -484,10 +490,4 @@ export class GeographicValidationService {
 
     return { isValid: true }
   }
-}
-
-export {
-  TemporaryMarkerService,
-  NotificationPreferenceService,
-  GeographicValidationService
 }

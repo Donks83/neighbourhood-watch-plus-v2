@@ -101,11 +101,11 @@ export async function createFootageRequest(
     }))
     
     // Create response entries for temporary markers
-    const markerResponses: CameraResponse[] = matchingMarkers.map(marker => ({
-      cameraId: marker.id,
-      cameraOwnerId: marker.ownerId,
-      cameraOwnerEmail: marker.ownerEmail,
-      cameraName: `${marker.deviceType} (Temporary)`,
+    const markerResponses: CameraResponse[] = matchingMarkers.map(match => ({
+      cameraId: match.markerId,
+      cameraOwnerId: match.marker.ownerId,
+      cameraOwnerEmail: match.marker.ownerEmail,
+      cameraName: `${match.marker.deviceType} (Temporary)`,
       status: 'pending'
     }))
     
@@ -123,7 +123,7 @@ export async function createFootageRequest(
       ...input,
       requesterId: userId,
       requesterEmail: userEmail,
-      targetCameraIds: [...nearbyCameras.map(c => c.id), ...matchingMarkers.map(m => m.id)],
+      targetCameraIds: [...nearbyCameras.map(c => c.id), ...matchingMarkers.map(m => m.markerId)],
       responses,
       status: 'pending',
       statusHistory: [{
@@ -270,18 +270,18 @@ async function createNotificationsForRequest(
     }
     
     // Get unique temporary marker owners
-    const markerOwnerIds = [...new Set(temporaryMarkers.map(m => m.ownerId))]
+    const markerOwnerIds = [...new Set(temporaryMarkers.map(m => m.marker.ownerId))]
     
     // Create notification for each temporary marker owner
     for (const ownerId of markerOwnerIds) {
-      const ownerMarkers = temporaryMarkers.filter(m => m.ownerId === ownerId)
+      const ownerMarkers = temporaryMarkers.filter(m => m.marker.ownerId === ownerId)
       const markerCount = ownerMarkers.length
-      const deviceTypes = ownerMarkers.map(m => m.deviceType).join(', ')
+      const deviceTypes = ownerMarkers.map(m => m.marker.deviceType).join(', ')
       
       const notification: RequestNotification = {
         id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         userId: ownerId,
-        email: ownerMarkers[0].ownerEmail,
+        email: ownerMarkers[0].marker.ownerEmail,
         type: 'new-request',
         requestId: request.id,
         title: `Footage Match Found! (${request.priority} priority)`,
@@ -297,14 +297,14 @@ async function createNotificationsForRequest(
       
       // Also send SMS/App notification if preferences are set
       const { NotificationPreferenceService } = await import('./temporary-evidence-service')
-      const prefs = await NotificationPreferenceService.getUserPreferences(ownerId)
+      const prefs = await NotificationPreferenceService.getNotificationPreferences(ownerId)
       if (prefs) {
-        if (prefs.sms && ownerMarkers[0].notificationPreferences?.smsNumber) {
-          console.log(`📱 Would send SMS to ${ownerMarkers[0].notificationPreferences.smsNumber}`)
+        if (prefs.channels.sms && ownerMarkers[0].marker.ownerPhone) {
+          console.log(`📱 Would send SMS to ${ownerMarkers[0].marker.ownerPhone}`)
           // TODO: Integrate real SMS service (Twilio, AWS SNS, etc.)
         }
-        if (prefs.email) {
-          console.log(`📧 Would send email to ${ownerMarkers[0].ownerEmail}`)
+        if (prefs.channels.email) {
+          console.log(`📧 Would send email to ${ownerMarkers[0].marker.ownerEmail}`)
           // TODO: Integrate real email service (SendGrid, AWS SES, etc.)
         }
       }
