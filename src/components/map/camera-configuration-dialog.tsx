@@ -119,6 +119,24 @@ export default function CameraConfigurationDialog({
           autoRespond: false // Never auto-respond, always manual
         },
         status: 'active',
+        operationalStatus: 'active', // Camera is operational
+        verification: {
+          status: 'pending',
+          submittedAt: new Date() as any,
+          evidence: {
+            userNotes: 'Camera registered through property dashboard'
+          },
+          history: [{
+            id: `submit-${Date.now()}`,
+            action: 'submitted',
+            performedBy: user.uid,
+            performedAt: new Date() as any,
+            evidence: {
+              userNotes: 'Camera registered through property dashboard'
+            }
+          }],
+          priority: 'normal'
+        },
         createdAt: new Date() as any,
         lastUpdated: new Date() as any
       }
