@@ -25,7 +25,6 @@ export default function CameraEditModal({
 }: CameraEditModalProps) {
   const [formData, setFormData] = useState({
     name: camera.name,
-    description: camera.description || '',
     operationalStatus: camera.operationalStatus || 'active',
     shareWithCommunity: camera.privacySettings.shareWithCommunity,
     requireApproval: camera.privacySettings.requireApproval,
@@ -43,7 +42,6 @@ export default function CameraEditModal({
   useEffect(() => {
     setFormData({
       name: camera.name,
-      description: camera.description || '',
       operationalStatus: camera.operationalStatus || 'active',
       shareWithCommunity: camera.privacySettings.shareWithCommunity,
       requireApproval: camera.privacySettings.requireApproval,
@@ -61,7 +59,6 @@ export default function CameraEditModal({
   useEffect(() => {
     const originalData = {
       name: camera.name,
-      description: camera.description || '',
       operationalStatus: camera.operationalStatus || 'active',
       shareWithCommunity: camera.privacySettings.shareWithCommunity,
       requireApproval: camera.privacySettings.requireApproval,
@@ -81,7 +78,6 @@ export default function CameraEditModal({
     try {
       const updates: Partial<RegisteredCamera> = {
         name: formData.name,
-        description: formData.description,
         operationalStatus: formData.operationalStatus as 'active' | 'offline' | 'maintenance',
         privacySettings: {
           ...camera.privacySettings,
@@ -171,17 +167,6 @@ export default function CameraEditModal({
                       <option value="maintenance">🟡 Maintenance</option>
                     </select>
                   </div>
-                </div>
-                
-                <div>
-                  <Label htmlFor="description">Description (Optional)</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Additional details about this camera..."
-                    rows={2}
-                  />
                 </div>
               </CardContent>
             </Card>
