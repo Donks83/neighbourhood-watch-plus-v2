@@ -29,8 +29,6 @@ export default function CameraEditModal({
     shareWithCommunity: camera.privacySettings.shareWithCommunity,
     requireApproval: camera.privacySettings.requireApproval,
     maxRequestRadius: camera.privacySettings.maxRequestRadius,
-    allowedTimeStart: camera.privacySettings.allowedTimeStart || '06:00',
-    allowedTimeEnd: camera.privacySettings.allowedTimeEnd || '22:00',
     resolution: camera.specifications?.resolution || 'HD',
     nightVision: camera.specifications?.nightVision || false,
     weatherResistant: camera.specifications?.weatherResistant || false
@@ -46,8 +44,6 @@ export default function CameraEditModal({
       shareWithCommunity: camera.privacySettings.shareWithCommunity,
       requireApproval: camera.privacySettings.requireApproval,
       maxRequestRadius: camera.privacySettings.maxRequestRadius,
-      allowedTimeStart: camera.privacySettings.allowedTimeStart || '06:00',
-      allowedTimeEnd: camera.privacySettings.allowedTimeEnd || '22:00',
       resolution: camera.specifications?.resolution || 'HD',
       nightVision: camera.specifications?.nightVision || false,
       weatherResistant: camera.specifications?.weatherResistant || false
@@ -63,8 +59,6 @@ export default function CameraEditModal({
       shareWithCommunity: camera.privacySettings.shareWithCommunity,
       requireApproval: camera.privacySettings.requireApproval,
       maxRequestRadius: camera.privacySettings.maxRequestRadius,
-      allowedTimeStart: camera.privacySettings.allowedTimeStart || '06:00',
-      allowedTimeEnd: camera.privacySettings.allowedTimeEnd || '22:00',
       resolution: camera.specifications?.resolution || 'HD',
       nightVision: camera.specifications?.nightVision || false,
       weatherResistant: camera.specifications?.weatherResistant || false
@@ -83,9 +77,7 @@ export default function CameraEditModal({
           ...camera.privacySettings,
           shareWithCommunity: formData.shareWithCommunity,
           requireApproval: formData.requireApproval,
-          maxRequestRadius: formData.maxRequestRadius,
-          allowedTimeStart: formData.allowedTimeStart,
-          allowedTimeEnd: formData.allowedTimeEnd
+          maxRequestRadius: formData.maxRequestRadius
         },
         specifications: {
           ...camera.specifications,
@@ -226,27 +218,6 @@ export default function CameraEditModal({
                   <p className="text-xs text-gray-500 mt-1">
                     How far from your camera users can request footage (5-50m)
                   </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="time-start">Available From</Label>
-                    <Input
-                      id="time-start"
-                      type="time"
-                      value={formData.allowedTimeStart}
-                      onChange={(e) => setFormData(prev => ({ ...prev, allowedTimeStart: e.target.value }))}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="time-end">Available Until</Label>
-                    <Input
-                      id="time-end"
-                      type="time"
-                      value={formData.allowedTimeEnd}
-                      onChange={(e) => setFormData(prev => ({ ...prev, allowedTimeEnd: e.target.value }))}
-                    />
-                  </div>
                 </div>
               </CardContent>
             </Card>
