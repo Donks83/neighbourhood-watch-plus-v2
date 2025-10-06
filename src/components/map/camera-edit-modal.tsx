@@ -30,8 +30,7 @@ export default function CameraEditModal({
     requireApproval: camera.privacySettings.requireApproval,
     maxRequestRadius: camera.privacySettings.maxRequestRadius,
     resolution: camera.specifications?.resolution || 'HD',
-    nightVision: camera.specifications?.nightVision || false,
-    weatherResistant: camera.specifications?.weatherResistant || false
+    nightVision: camera.specifications?.nightVision || false
   })
 
   const [hasChanges, setHasChanges] = useState(false)
@@ -45,8 +44,7 @@ export default function CameraEditModal({
       requireApproval: camera.privacySettings.requireApproval,
       maxRequestRadius: camera.privacySettings.maxRequestRadius,
       resolution: camera.specifications?.resolution || 'HD',
-      nightVision: camera.specifications?.nightVision || false,
-      weatherResistant: camera.specifications?.weatherResistant || false
+      nightVision: camera.specifications?.nightVision || false
     })
     setHasChanges(false)
   }, [camera])
@@ -60,8 +58,7 @@ export default function CameraEditModal({
       requireApproval: camera.privacySettings.requireApproval,
       maxRequestRadius: camera.privacySettings.maxRequestRadius,
       resolution: camera.specifications?.resolution || 'HD',
-      nightVision: camera.specifications?.nightVision || false,
-      weatherResistant: camera.specifications?.weatherResistant || false
+      nightVision: camera.specifications?.nightVision || false
     }
     
     const isDifferent = JSON.stringify(formData) !== JSON.stringify(originalData)
@@ -82,8 +79,7 @@ export default function CameraEditModal({
         specifications: {
           ...camera.specifications,
           resolution: formData.resolution,
-          nightVision: formData.nightVision,
-          weatherResistant: formData.weatherResistant
+          nightVision: formData.nightVision
         }
       }
 
@@ -246,7 +242,7 @@ export default function CameraEditModal({
                   </select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
                     <div className="space-y-0.5">
                       <Label>Night Vision</Label>
@@ -258,21 +254,6 @@ export default function CameraEditModal({
                       type="checkbox"
                       checked={formData.nightVision}
                       onChange={(e) => setFormData(prev => ({ ...prev, nightVision: e.target.checked }))}
-                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                    <div className="space-y-0.5">
-                      <Label>Weather Resistant</Label>
-                      <p className="text-xs text-gray-500">
-                        Outdoor rated (IP65+)
-                      </p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={formData.weatherResistant}
-                      onChange={(e) => setFormData(prev => ({ ...prev, weatherResistant: e.target.checked }))}
                       className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
                     />
                   </div>
