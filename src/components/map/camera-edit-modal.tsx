@@ -147,7 +147,7 @@ export default function CameraEditModal({
                     <select 
                       id="operational-status"
                       value={formData.operationalStatus} 
-                      onChange={(e) => setFormData(prev => ({ ...prev, operationalStatus: e.target.value }))}
+                      onChange={(e) => setFormData(prev => ({ ...prev, operationalStatus: e.target.value as 'active' | 'offline' | 'maintenance' }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="active">🟢 Online & Active</option>
