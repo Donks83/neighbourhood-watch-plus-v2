@@ -287,11 +287,11 @@ export default function CameraEditModal({
                   </div>
                   <div>
                     <span className="text-gray-500">Created:</span>
-                    <div className="mt-1">{camera.createdAt?.toLocaleDateString()}</div>
+                    <div className="mt-1">{camera.createdAt?.toDate?.()?.toLocaleDateString() || 'N/A'}</div>
                   </div>
                   <div>
                     <span className="text-gray-500">Last Updated:</span>
-                    <div className="mt-1">{camera.updatedAt?.toLocaleDateString()}</div>
+                    <div className="mt-1">{camera.lastUpdated?.toDate?.()?.toLocaleDateString() || camera.updatedAt?.toDate?.()?.toLocaleDateString() || 'N/A'}</div>
                   </div>
                 </div>
               </CardContent>
