@@ -62,7 +62,7 @@ export default function IncidentReportForm({
     defaultValues: {
       incidentType: 'other',
       description: '',
-      incidentDateTime: new Date().toISOString().slice(0, 16), // Current datetime in local format
+      incidentDateTime: new Date(), // Use Date object, react-hook-form will handle conversion
       requestRadius: parseInt(process.env.NEXT_PUBLIC_DEFAULT_REQUEST_RADIUS || '200'),
     },
     mode: 'onChange'
