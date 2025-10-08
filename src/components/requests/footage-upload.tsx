@@ -189,7 +189,7 @@ export default function FootageUpload({
           </div>
           <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
             <p><strong>Incident:</strong> {request.incidentType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
-            <p><strong>Date:</strong> {new Date(request.incidentDate).toLocaleDateString()} at {request.incidentTime}</p>
+            <p><strong>Date:</strong> {(request.incidentDate instanceof Date ? request.incidentDate : request.incidentDate.toDate()).toLocaleDateString()} at {request.incidentTime}</p>
             <p><strong>Description:</strong> {request.description}</p>
           </div>
         </div>
