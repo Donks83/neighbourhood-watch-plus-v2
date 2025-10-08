@@ -141,8 +141,7 @@ const Map = forwardRef<MapRef, MapProps>(function Map({
         container: mapContainer.current,
         style: getMapStyle(),
         center: [userLocation.lng, userLocation.lat],
-        zoom: DEFAULT_ZOOM,
-        antialias: true,
+        zoom: DEFAULT_ZOOM
       })
 
       // Add navigation control
