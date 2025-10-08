@@ -56,7 +56,7 @@ export default function IncidentReportPanel({
     defaultValues: {
       incidentType: 'other',
       description: '',
-      incidentDateTime: new Date().toISOString().slice(0, 16), // Current datetime in local format
+      incidentDateTime: new Date(), // Use Date object
       requestRadius: parseInt(process.env.NEXT_PUBLIC_DEFAULT_REQUEST_RADIUS || '200'),
     },
     mode: 'onChange'
@@ -200,7 +200,7 @@ export default function IncidentReportPanel({
                     className="text-xs"
                     onClick={() => {
                       const now = new Date()
-                      setValue('incidentDateTime', now.toISOString().slice(0, 16))
+                      setValue('incidentDateTime', now)
                     }}
                   >
                     Just now
@@ -212,7 +212,7 @@ export default function IncidentReportPanel({
                     className="text-xs"
                     onClick={() => {
                       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
-                      setValue('incidentDateTime', oneHourAgo.toISOString().slice(0, 16))
+                      setValue('incidentDateTime', oneHourAgo)
                     }}
                   >
                     1 hour ago
@@ -225,7 +225,7 @@ export default function IncidentReportPanel({
                     onClick={() => {
                       const thisMorning = new Date()
                       thisMorning.setHours(8, 0, 0, 0)
-                      setValue('incidentDateTime', thisMorning.toISOString().slice(0, 16))
+                      setValue('incidentDateTime', thisMorning)
                     }}
                   >
                     This morning
@@ -238,7 +238,7 @@ export default function IncidentReportPanel({
                     onClick={() => {
                       const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
                       yesterday.setHours(18, 0, 0, 0)
-                      setValue('incidentDateTime', yesterday.toISOString().slice(0, 16))
+                      setValue('incidentDateTime', yesterday)
                     }}
                   >
                     Yesterday evening
@@ -254,11 +254,13 @@ export default function IncidentReportPanel({
                     <CalendarIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
                     <Input
                       type="date"
-                      value={watch('incidentDateTime')?.slice(0, 10) || ''}
+                      value={watch('incidentDateTime') instanceof Date ? watch('incidentDateTime').toISOString().split('T')[0] : ''}
                       onChange={(e) => {
-                        const currentDateTime = watch('incidentDateTime') || new Date().toISOString().slice(0, 16)
-                        const currentTime = currentDateTime.slice(11, 16)
-                        setValue('incidentDateTime', `${e.target.value}T${currentTime}`)
+                        const currentDateTime = watch('incidentDateTime')
+                        const currentDate = currentDateTime instanceof Date ? currentDateTime : new Date()
+                        const newDate = new Date(e.target.value)
+                        newDate.setHours(currentDate.getHours(), currentDate.getMinutes(), 0, 0)
+                        setValue('incidentDateTime', newDate)
                       }}
                       className="flex-1"
                       max={new Date().toISOString().split('T')[0]} // Can't select future dates
@@ -272,11 +274,13 @@ export default function IncidentReportPanel({
                     <div className="w-4 h-4 text-gray-400 flex-shrink-0 flex items-center justify-center text-xs">🕐</div>
                     <Input
                       type="time"
-                      value={watch('incidentDateTime')?.slice(11, 16) || ''}
+                      value={watch('incidentDateTime') instanceof Date ? watch('incidentDateTime').toTimeString().slice(0, 5) : ''}
                       onChange={(e) => {
-                        const currentDateTime = watch('incidentDateTime') || new Date().toISOString().slice(0, 16)
-                        const currentDate = currentDateTime.slice(0, 10)
-                        setValue('incidentDateTime', `${currentDate}T${e.target.value}`)
+                        const currentDateTime = watch('incidentDateTime')
+                        const currentDate = currentDateTime instanceof Date ? new Date(currentDateTime) : new Date()
+                        const [hours, minutes] = e.target.value.split(':').map(Number)
+                        currentDate.setHours(hours, minutes, 0, 0)
+                        setValue('incidentDateTime', currentDate)
                       }}
                       className="flex-1"
                     />
