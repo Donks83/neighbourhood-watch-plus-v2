@@ -215,9 +215,8 @@ export default function EnhancedIncidentReportPanel({
     try {
       await onSubmit({
         ...data,
-        incidentDateTime: new Date(data.incidentDateTime),
         requestRadius: Number(data.requestRadius)
-      } as EnhancedIncidentFormData)
+      })
       reset()
       onClose()
     } catch (error) {
