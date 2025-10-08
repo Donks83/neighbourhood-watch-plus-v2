@@ -376,7 +376,7 @@ export default function RewardSystem({
                   <Label className="text-sm font-medium mb-2 block">
                     Payment Method
                   </Label>
-                  <Select value={withdrawMethod} onValueChange={setWithdrawMethod}>
+                  <Select value={withdrawMethod} onValueChange={(value) => setWithdrawMethod(value as typeof withdrawMethod)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
