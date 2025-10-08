@@ -410,8 +410,7 @@ export default function CameraRegistrationDashboard({
       const newStatus = camera.operationalStatus === 'active' ? 'offline' : 'active'
       
       await updateCamera(camera.id, {
-        operationalStatus: newStatus,
-        lastStatusChange: new Date()
+        operationalStatus: newStatus
       })
       
       // Reset loading flag and reload
