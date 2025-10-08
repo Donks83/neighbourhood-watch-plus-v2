@@ -1054,7 +1054,7 @@ export default function CameraRegistrationDashboard({
                               <div className="text-xs text-gray-500 space-y-1">
                                 <div>{camera.specifications?.resolution} • {camera.specifications?.nightVision ? 'Night vision' : 'Day only'}</div>
                                 <div>Coverage: {camera.privacySettings.maxRequestRadius}m radius</div>
-                                <div>Added: {camera.createdAt?.toLocaleDateString()}</div>
+                                <div>Added: {camera.createdAt?.toDate?.()?.toLocaleDateString() || 'N/A'}</div>
                                 
                                 {/* Enhanced Verification Details */}
                                 {camera.verification ? (
