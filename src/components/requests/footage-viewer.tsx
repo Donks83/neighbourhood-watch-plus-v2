@@ -57,7 +57,11 @@ export default function FootageViewer({ request, onClose }: FootageViewerProps) 
         })
         
         // Sort by upload date (newest first)
-        files.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
+        files.sort((a, b) => {
+          const aDate = a.uploadedAt instanceof Date ? a.uploadedAt : a.uploadedAt.toDate()
+          const bDate = b.uploadedAt instanceof Date ? b.uploadedAt : b.uploadedAt.toDate()
+          return bDate.getTime() - aDate.getTime()
+        })
         
         setFootageFiles(files)
         console.log(`✅ Loaded ${files.length} footage files for request ${request.id}`)
