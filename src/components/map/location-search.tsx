@@ -322,9 +322,7 @@ export default function LocationSearch({
         <Search className={cn(
           "absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4",
           pendingSearch ? "text-blue-500 animate-pulse" : "text-gray-400"
-        )} 
-          title={pendingSearch ? "Searching soon..." : "Search for locations"}
-        />
+        )} />
         <Input
           ref={searchInputRef}
           type="text"
