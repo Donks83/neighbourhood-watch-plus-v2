@@ -10,7 +10,7 @@ import {
   CheckCircle2, 
   AlertCircle,
   CreditCard,
-  Bank,
+  Landmark,
   Smartphone,
   Gift,
   Star,
@@ -54,7 +54,7 @@ interface EvidenceSubmission {
 
 const PAYMENT_METHODS = [
   { value: 'platform_credit', label: 'Platform Credit', icon: Wallet, description: 'Keep in your account for future use' },
-  { value: 'bank_transfer', label: 'Bank Transfer', icon: Bank, description: 'Direct deposit to your bank account' },
+  { value: 'bank_transfer', label: 'Bank Transfer', icon: Landmark, description: 'Direct deposit to your bank account' },
   { value: 'paypal', label: 'PayPal', icon: CreditCard, description: 'Transfer to your PayPal account' }
 ] as const
 
