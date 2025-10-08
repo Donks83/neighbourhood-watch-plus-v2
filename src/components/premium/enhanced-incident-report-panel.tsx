@@ -114,7 +114,7 @@ const URGENCY_LEVELS = [
 interface EnhancedIncidentFormData {
   incidentType: IncidentType
   description: string
-  incidentDateTime: Date
+  incidentDateTime: string
   requestRadius: number
   // Premium fields
   severity?: IncidentSeverity
