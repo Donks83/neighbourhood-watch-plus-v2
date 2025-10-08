@@ -186,7 +186,7 @@ export default function IncidentReportForm({
                   className="text-xs"
                   onClick={() => {
                     const now = new Date()
-                    setValue('incidentDateTime', now.toISOString().slice(0, 16))
+                    setValue('incidentDateTime', now)
                   }}
                 >
                   Now
@@ -198,7 +198,7 @@ export default function IncidentReportForm({
                   className="text-xs"
                   onClick={() => {
                     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
-                    setValue('incidentDateTime', oneHourAgo.toISOString().slice(0, 16))
+                    setValue('incidentDateTime', oneHourAgo)
                   }}
                 >
                   1 Hour Ago
@@ -211,7 +211,7 @@ export default function IncidentReportForm({
                   onClick={() => {
                     const today = new Date()
                     today.setHours(9, 0, 0, 0) // 9 AM today
-                    setValue('incidentDateTime', today.toISOString().slice(0, 16))
+                    setValue('incidentDateTime', today)
                   }}
                 >
                   This Morning
