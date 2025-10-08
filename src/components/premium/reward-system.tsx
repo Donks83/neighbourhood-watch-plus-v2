@@ -261,7 +261,7 @@ export default function RewardSystem({
                           Evidence ID: {reward.evidenceMatchId.substring(0, 16)}...
                         </p>
                         <p className="text-xs text-gray-400">
-                          {reward.createdAt.toLocaleDateString()} • {reward.paymentStatus}
+                          {reward.createdAt.toDate().toLocaleDateString()} • {reward.paymentStatus}
                         </p>
                       </div>
                     </div>
@@ -316,7 +316,7 @@ export default function RewardSystem({
                           {transaction.description}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {transaction.timestamp.toLocaleDateString()} • {transaction.status}
+                          {transaction.timestamp.toDate().toLocaleDateString()} • {transaction.status}
                         </p>
                       </div>
                     </div>
