@@ -231,7 +231,7 @@ export default function CameraRegistrationDashboard({
             `⚠️ Camera Location Outside Allowed Area
 
 ` +
-            `This camera is ${validation.distance.toFixed(0)}m from your registered address.\n` +
+            `This camera is ${validation.distance?.toFixed(0) || 'unknown'}m from your registered address.\n` +
             `Permanent cameras must be within ${validation.maxAllowedDistance}m (2km) of your registered address.\n\n` +
             `Reason: ${validation.reason}\n\n` +
             `To register cameras at other locations, please add additional addresses in your settings.`
@@ -240,7 +240,7 @@ export default function CameraRegistrationDashboard({
           return
         }
         
-        console.log(`✅ Camera location validated: ${validation.distance.toFixed(0)}m from registered address`)
+        console.log(`✅ Camera location validated: ${validation.distance?.toFixed(0) || 'unknown'}m from registered address`)
       } else {
         // No address registered - require address first
         alert(
