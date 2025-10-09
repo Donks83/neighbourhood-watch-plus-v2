@@ -220,7 +220,7 @@ export default function VerificationEvidenceUpload({
     }
     
     const evidence: VerificationEvidence = {
-      cameraPhotos: photos.map(p => p.url),
+      photos: photos.map(p => p.url),
       documents: documents.map(d => d.url),
       purchaseReceipt: purchaseReceipt?.url,
       userNotes: userNotes || undefined,
