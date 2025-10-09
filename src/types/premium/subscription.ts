@@ -27,6 +27,7 @@ export interface SubscriptionTier {
 }
 
 export interface UserSubscription {
+  id?: string
   userId: string
   tier: SubscriptionTier
   role: UserRole
@@ -71,7 +72,7 @@ export type IncidentType =
 export type IncidentSeverity = 'low' | 'medium' | 'high' | 'critical'
 
 export interface CommunityIncident {
-  id: string
+  id?: string
   reporterId: string // Anonymous ID for community users
   reporterRole: UserRole
   
@@ -120,7 +121,7 @@ export interface CommunityIncident {
 // =============================================================================
 
 export interface EvidenceRequest {
-  id: string
+  id?: string
   requesterId: string // Premium user ID
   requesterRole: UserRole
   requesterOrganization: string
@@ -173,7 +174,7 @@ export interface EvidenceRequest {
 }
 
 export interface EvidenceMatch {
-  id: string
+  id?: string
   requestId: string
   sourceId: string // Anonymous camera/device ID
   ownerId: string // Camera owner user ID
@@ -249,7 +250,7 @@ export interface ChainOfCustody {
 // =============================================================================
 
 export interface TokenReward {
-  id: string
+  id?: string
   recipientId: string
   evidenceMatchId: string
   requestId: string
@@ -296,7 +297,7 @@ export interface UserWallet {
 }
 
 export interface WalletTransaction {
-  id: string
+  id?: string
   type: 'credit' | 'debit' | 'withdrawal' | 'refund'
   amount: number
   description: string
@@ -310,7 +311,7 @@ export interface WalletTransaction {
 // =============================================================================
 
 export interface EvidenceAnalytics {
-  requestId: string
+  requestId?: string
   
   // Performance metrics
   performance: {
@@ -355,7 +356,7 @@ export interface HeatmapPoint {
 // =============================================================================
 
 export interface LegalDocument {
-  id: string
+  id?: string
   type: 'privacy_policy' | 'terms_of_service' | 'evidence_handling' | 'user_agreement'
   version: string
   content: string
