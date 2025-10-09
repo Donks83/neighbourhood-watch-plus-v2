@@ -16,8 +16,8 @@ import {
   Timestamp
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import type { RegisteredCamera, FootageRequest, UserProfile } from '@/types/camera'
-import type { Location, IncidentFormData } from '@/types'
+import type { RegisteredCamera, UserProfile } from '@/types/camera'
+import type { Location, IncidentFormData, FootageRequest } from '@/types'
 
 // ==========================================
 // USER OPERATIONS
