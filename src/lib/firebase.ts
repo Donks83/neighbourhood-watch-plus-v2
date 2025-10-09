@@ -26,22 +26,15 @@ export const functions = getFunctions(app)
 // Connect to emulators in development if enabled
 if (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true' && typeof window !== 'undefined') {
   try {
-    // Only connect to emulators once
-    if (!auth.config.emulator) {
-      connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true })
-    }
-    if (!(db as any)._delegate._databaseId.host.includes('localhost')) {
-      connectFirestoreEmulator(db, 'localhost', 8080)
-    }
-    if (!storage.app._config.storageBucket?.includes('localhost')) {
-      connectStorageEmulator(storage, 'localhost', 9199)
-    }
-    if (!functions.app._config.projectId?.includes('localhost')) {
-      connectFunctionsEmulator(functions, 'localhost', 5001)
-    }
+    // Try to connect to emulators (will silently fail if already connected)
+    connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true })
+    connectFirestoreEmulator(db, 'localhost', 8080)
+    connectStorageEmulator(storage, 'localhost', 9199)
+    connectFunctionsEmulator(functions, 'localhost', 5001)
     console.log('🔧 Connected to Firebase Emulators')
   } catch (error) {
-    console.warn('⚠️ Firebase Emulators connection failed:', error)
+    // Silently ignore if already connected
+    console.debug('Firebase Emulators already connected or connection failed')
   }
 } else {
   console.log('🔥 Connected to Firebase Production')
