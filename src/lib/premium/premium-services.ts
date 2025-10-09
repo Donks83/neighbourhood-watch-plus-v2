@@ -507,7 +507,7 @@ export class WalletService {
       updatedAt: Timestamp.now()
     }
     
-    await updateDoc(doc(db, PREMIUM_COLLECTIONS.userWallets, userId), newWallet)
+    await updateDoc(doc(db, PREMIUM_COLLECTIONS.userWallets, userId), newWallet as any)
     return newWallet
   }
 

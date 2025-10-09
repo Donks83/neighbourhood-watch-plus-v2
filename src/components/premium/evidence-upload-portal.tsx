@@ -373,9 +373,9 @@ export default function EvidenceUploadPortal({
                   {fileRejections.length > 0 && (
                     <div className="mt-4 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
                       <h4 className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">File Upload Errors:</h4>
-                      {fileRejections.map(({ file, errors }) => (
+                      {fileRejections.map(({ file, errors }: { file: File; errors: Array<{ message: string }> }) => (
                         <div key={file.name} className="text-sm text-red-600 dark:text-red-400">
-                          • {file.name}: {errors.map(e => e.message).join(', ')}
+                          • {file.name}: {errors.map((e: { message: string }) => e.message).join(', ')}
                         </div>
                       ))}
                     </div>

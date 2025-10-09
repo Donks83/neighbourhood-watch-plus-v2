@@ -335,7 +335,7 @@ export class NotificationPreferenceService {
 
     await updateDoc(
       doc(db, TEMPORARY_EVIDENCE_COLLECTIONS.notificationPreferences, userId),
-      defaultPrefs
+      defaultPrefs as any
     )
 
     return defaultPrefs

@@ -348,8 +348,8 @@ async function getPendingVerifications(adminId: string, limitCount: number = 20)
     const snapshot = await getDocs(verificationsQuery)
     const verifications = []
 
-    for (const doc of snapshot.docs) {
-      const data = doc.data()
+    for (const docSnap of snapshot.docs) {
+      const data = docSnap.data()
       
       // Get camera details
       const cameraRef = doc(db, 'cameras', data.cameraId)
@@ -364,7 +364,7 @@ async function getPendingVerifications(adminId: string, limitCount: number = 20)
         const user = userDoc.data() as UserProfile
         
         verifications.push({
-          id: doc.id,
+          id: docSnap.id,
           cameraId: data.cameraId,
           userId: data.userId,
           userEmail: user.email,

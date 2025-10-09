@@ -236,19 +236,3 @@ export interface VerificationAppeal {
   escalatedTo?: string      // Super admin UID if escalated
 }
 
-// Export consolidated types for easier importing
-export type {
-  CameraVerification,
-  VerificationEvidence,
-  VerificationHistoryItem,
-  UserRole,
-  UserPermissions,
-  TrustScoreBreakdown,
-  EnhancedTrustScore,
-  VerificationQueueItem,
-  VerificationStats,
-  VerificationNotification,
-  VerificationAppeal,
-  AutoVerificationCriteria,
-  AutoVerificationResult
-}
