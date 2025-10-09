@@ -3,6 +3,7 @@ import {
   doc, 
   getDoc, 
   getDocs, 
+  setDoc,
   updateDoc, 
   deleteDoc,
   query, 
@@ -165,7 +166,7 @@ async function assignUserRole(
     
     // Save role
     const roleRef = doc(db, 'user_roles', userId)
-    await updateDoc(roleRef, userRole)
+    await setDoc(roleRef, userRole, { merge: true })
     
     // Update user profile with role reference
     await updateDoc(userRef, {
