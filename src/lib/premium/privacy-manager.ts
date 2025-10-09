@@ -546,9 +546,3 @@ For questions: privacy@neighbourhoodwatchplus.com
   }
 }
 
-export {
-  LocationPrivacyManager,
-  UserAnonymizationManager,
-  DataRetentionManager,
-  ConsentManager
-}

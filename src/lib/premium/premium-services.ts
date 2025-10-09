@@ -658,10 +658,3 @@ export class RealtimeService {
   }
 }
 
-export {
-  SubscriptionService,
-  IncidentReportingService,
-  EvidenceRequestService,
-  WalletService,
-  RealtimeService
-}
