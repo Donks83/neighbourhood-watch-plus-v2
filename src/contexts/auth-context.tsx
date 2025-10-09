@@ -118,9 +118,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         lastActiveAt: serverTimestamp() as any,
         stats: {
           camerasRegistered: 0,
+          camerasVerified: 0,
+          camerasRejected: 0,
           requestsMade: 0,
           footageShared: 0,
-          communityHelpScore: 0
+          communityHelpScore: 0,
+          successfulVerifications: 0
         },
         ...additionalData
       }
