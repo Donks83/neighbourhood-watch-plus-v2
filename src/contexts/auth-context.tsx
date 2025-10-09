@@ -114,6 +114,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         address: geocodedAddress,
         verified: false,
         trustScore: 0,
+        enhancedTrustScore: {
+          current: 50,
+          breakdown: {
+            base: 50,
+            verifiedCameras: 0,
+            communityParticipation: 0,
+            successfulRequests: 0,
+            accountAge: 0,
+            penalties: 0,
+            total: 50
+          },
+          history: [],
+          lastCalculated: serverTimestamp() as any,
+          level: 'new',
+          badges: []
+        },
         createdAt: serverTimestamp() as any,
         lastActiveAt: serverTimestamp() as any,
         stats: {
