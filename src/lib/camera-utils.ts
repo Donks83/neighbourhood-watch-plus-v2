@@ -104,7 +104,7 @@ export function generateCameraFieldOfView(
  * Calculate security score based on camera coverage and community participation
  */
 export function calculateSecurityScore(cameras: RegisteredCamera[]): SecurityScore {
-  const activeCameras = cameras.filter(c => c.status === 'active')
+  const activeCameras = cameras.filter(c => c.operationalStatus === 'active')
   
   // Camera count score (0-25 points)
   const cameraCountScore = Math.min(25, activeCameras.length * 8)
@@ -210,6 +210,19 @@ export function generateSamplePropertyDashboard(userLocation: Location): Propert
           end: '07:00'
         }
       },
+      operationalStatus: 'active',
+      verification: {
+        status: 'approved',
+        submittedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) as any,
+        verifiedAt: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000) as any,
+        verifiedBy: 'admin-123',
+        evidence: {
+          photos: [],
+          documents: []
+        },
+        history: [],
+        priority: 'normal'
+      },
       status: 'active',
       lastActivity: new Date(Date.now() - 6 * 60 * 60 * 1000) as any, // 6 hours ago
       createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) as any, // 30 days ago
@@ -239,6 +252,19 @@ export function generateSamplePropertyDashboard(userLocation: Location): Propert
         requireApproval: true,
         maxRequestRadius: 150,
         autoRespond: false
+      },
+      operationalStatus: 'active',
+      verification: {
+        status: 'approved',
+        submittedAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000) as any,
+        verifiedAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000) as any,
+        verifiedBy: 'admin-123',
+        evidence: {
+          photos: [],
+          documents: []
+        },
+        history: [],
+        priority: 'normal'
       },
       status: 'active',
       lastActivity: new Date(Date.now() - 2 * 60 * 60 * 1000) as any, // 2 hours ago
