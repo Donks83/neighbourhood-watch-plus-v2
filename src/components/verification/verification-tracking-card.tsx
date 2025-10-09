@@ -392,10 +392,7 @@ export default function VerificationTrackingCard({
                       <div className="flex items-center justify-between pt-2">
                         <div className="text-xs text-gray-500">
                           Last updated: {camera.lastUpdated ? 
-                            (typeof camera.lastUpdated.toDate === 'function' ? 
-                              camera.lastUpdated.toDate().toLocaleDateString() : 
-                              new Date(camera.lastUpdated).toLocaleDateString()
-                            ) : 'Unknown'
+                            camera.lastUpdated.toDate().toLocaleDateString() : 'Unknown'
                           }
                         </div>
                         {getActionButton(camera)}
