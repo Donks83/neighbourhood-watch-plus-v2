@@ -243,7 +243,7 @@ async function createNotificationsForRequest(
     const notifications: RequestNotification[] = []
     
     // Get unique camera owners
-    const cameraOwnerIds = [...new Set(cameras.map(c => c.userId))]
+    const cameraOwnerIds = Array.from(new Set(cameras.map(c => c.userId)))
     
     // Create notification for each camera owner
     for (const ownerId of cameraOwnerIds) {
@@ -270,7 +270,7 @@ async function createNotificationsForRequest(
     }
     
     // Get unique temporary marker owners
-    const markerOwnerIds = [...new Set(temporaryMarkers.map(m => m.marker.ownerId))]
+    const markerOwnerIds = Array.from(new Set(temporaryMarkers.map(m => m.marker.ownerId)))
     
     // Create notification for each temporary marker owner
     for (const ownerId of markerOwnerIds) {
