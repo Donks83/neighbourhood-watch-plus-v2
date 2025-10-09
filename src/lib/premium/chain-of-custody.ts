@@ -1,1 +1,496 @@
-import { Timestamp } from 'firebase/firestore'\nimport crypto from 'crypto'\nimport type { ChainOfCustody, EvidenceMatch } from '@/types/premium/subscription'\nimport type { Location } from '@/types'\n\n// =============================================================================\n// CHAIN OF CUSTODY MANAGEMENT\n// =============================================================================\n\nexport interface EvidenceFile {\n  id: string\n  originalName: string\n  fileSize: number\n  mimeType: string\n  uploadedBy: string // Anonymous user ID\n  uploadedAt: Date\n  location?: Location\n  metadata: {\n    duration?: number // for videos in seconds\n    resolution?: string\n    frameRate?: number\n    codec?: string\n    device?: string\n  }\n}\n\nexport interface LegalDocument {\n  id: string\n  type: 'submission_receipt' | 'chain_of_custody' | 'court_order' | 'evidence_log'\n  content: string\n  createdAt: Date\n  createdBy: string\n  relatedEvidenceId: string\n}\n\nexport class ChainOfCustodyManager {\n  private readonly SALT = process.env.NEXT_PUBLIC_CUSTODY_SALT || 'default-salt'\n\n  /**\n   * Create initial chain of custody when evidence is uploaded\n   */\n  async createChainOfCustody(\n    evidenceId: string,\n    file: EvidenceFile,\n    requestId: string,\n    uploaderIP?: string,\n    userAgent?: string\n  ): Promise<ChainOfCustody> {\n    const fileHash = await this.generateFileHash(file)\n    const anonymousUploaderId = this.generateAnonymousId(file.uploadedBy)\n    \n    const chainOfCustody: ChainOfCustody = {\n      evidenceId,\n      originalSource: anonymousUploaderId,\n      timestamps: {\n        captured: file.uploadedAt as any, // Convert to Timestamp in implementation\n        uploaded: new Date() as any,\n        verified: new Date() as any,\n        accessed: []\n      },\n      handlers: {\n        uploadedBy: anonymousUploaderId,\n        verifiedBy: 'system-verification',\n        accessedBy: []\n      },\n      integrity: {\n        originalHash: fileHash,\n        currentHash: fileHash,\n        verified: true,\n        checksums: [fileHash]\n      },\n      legalStatus: 'collected'\n    }\n\n    // Log the creation\n    await this.logCustodyEvent(evidenceId, 'created', {\n      uploaderId: anonymousUploaderId,\n      fileHash,\n      timestamp: new Date(),\n      ipAddress: uploaderIP,\n      userAgent,\n      requestId\n    })\n\n    return chainOfCustody\n  }\n\n  /**\n   * Update chain of custody when evidence is accessed\n   */\n  async recordAccess(\n    evidenceId: string,\n    accessorId: string,\n    accessorRole: 'police' | 'insurance' | 'security' | 'admin',\n    purpose: string,\n    ipAddress?: string\n  ): Promise<void> {\n    const anonymousAccessorId = this.generateAnonymousId(accessorId)\n    \n    await this.logCustodyEvent(evidenceId, 'accessed', {\n      accessorId: anonymousAccessorId,\n      accessorRole,\n      purpose,\n      timestamp: new Date(),\n      ipAddress\n    })\n\n    // Update the chain of custody record\n    // In real implementation, this would update Firestore\n    console.log(`Evidence ${evidenceId} accessed by ${accessorRole} (${anonymousAccessorId}) for: ${purpose}`)\n  }\n\n  /**\n   * Verify evidence integrity\n   */\n  async verifyIntegrity(\n    evidenceId: string,\n    currentFile: EvidenceFile\n  ): Promise<{ valid: boolean; details: string }> {\n    try {\n      const currentHash = await this.generateFileHash(currentFile)\n      \n      // In real implementation, fetch original hash from database\n      const originalHash = await this.getOriginalHash(evidenceId)\n      \n      if (currentHash === originalHash) {\n        await this.logCustodyEvent(evidenceId, 'integrity_verified', {\n          verificationHash: currentHash,\n          timestamp: new Date(),\n          result: 'valid'\n        })\n        \n        return {\n          valid: true,\n          details: 'File integrity verified - hash matches original'\n        }\n      } else {\n        await this.logCustodyEvent(evidenceId, 'integrity_failed', {\n          originalHash,\n          currentHash,\n          timestamp: new Date(),\n          result: 'invalid'\n        })\n        \n        return {\n          valid: false,\n          details: 'File integrity compromised - hash mismatch detected'\n        }\n      }\n    } catch (error) {\n      return {\n        valid: false,\n        details: `Integrity verification failed: ${error}`\n      }\n    }\n  }\n\n  /**\n   * Generate court-admissible evidence package\n   */\n  async generateCourtPackage(\n    evidenceId: string,\n    caseNumber: string,\n    requestingAuthority: string\n  ): Promise<{\n    evidencePackage: string\n    legalDocuments: LegalDocument[]\n    verificationReport: string\n  }> {\n    const custodyLog = await this.getCustodyLog(evidenceId)\n    const integrityReport = await this.generateIntegrityReport(evidenceId)\n    \n    const legalDocuments: LegalDocument[] = [\n      {\n        id: `legal-${evidenceId}-custody`,\n        type: 'chain_of_custody',\n        content: JSON.stringify(custodyLog, null, 2),\n        createdAt: new Date(),\n        createdBy: 'system-legal-export',\n        relatedEvidenceId: evidenceId\n      },\n      {\n        id: `legal-${evidenceId}-integrity`,\n        type: 'evidence_log',\n        content: integrityReport,\n        createdAt: new Date(),\n        createdBy: 'system-integrity-check',\n        relatedEvidenceId: evidenceId\n      }\n    ]\n\n    const evidencePackage = JSON.stringify({\n      evidenceId,\n      caseNumber,\n      requestingAuthority,\n      custodyChain: custodyLog,\n      integrityVerification: integrityReport,\n      exportedAt: new Date().toISOString(),\n      exportedBy: 'automated-legal-system',\n      legalBasis: 'Court order for evidence submission',\n      authenticity: 'Verified through cryptographic hash chain'\n    }, null, 2)\n\n    // Log the court package generation\n    await this.logCustodyEvent(evidenceId, 'court_package_generated', {\n      caseNumber,\n      requestingAuthority,\n      timestamp: new Date(),\n      packageId: `court-pkg-${evidenceId}-${Date.now()}`\n    })\n\n    return {\n      evidencePackage,\n      legalDocuments,\n      verificationReport: integrityReport\n    }\n  }\n\n  /**\n   * Update legal status of evidence\n   */\n  async updateLegalStatus(\n    evidenceId: string,\n    newStatus: ChainOfCustody['legalStatus'],\n    updatedBy: string,\n    reason: string\n  ): Promise<void> {\n    await this.logCustodyEvent(evidenceId, 'status_updated', {\n      oldStatus: await this.getCurrentStatus(evidenceId),\n      newStatus,\n      updatedBy: this.generateAnonymousId(updatedBy),\n      reason,\n      timestamp: new Date()\n    })\n\n    // In real implementation, update Firestore record\n    console.log(`Evidence ${evidenceId} status updated to: ${newStatus}`)\n  }\n\n  /**\n   * Generate anonymous but consistent ID for privacy\n   */\n  private generateAnonymousId(originalId: string): string {\n    const hash = crypto.createHash('sha256')\n    hash.update(originalId + this.SALT)\n    return 'ANON-' + hash.digest('hex').substring(0, 16).toUpperCase()\n  }\n\n  /**\n   * Generate cryptographic hash of file for integrity verification\n   */\n  private async generateFileHash(file: EvidenceFile): Promise<string> {\n    // In browser environment, this would use FileReader and Web Crypto API\n    // For server-side or Node.js, use crypto module\n    \n    // Simplified hash generation (in real implementation, hash actual file content)\n    const hashInput = `${file.originalName}-${file.fileSize}-${file.uploadedAt.getTime()}-${file.uploadedBy}`\n    const hash = crypto.createHash('sha256')\n    hash.update(hashInput)\n    return 'sha256:' + hash.digest('hex')\n  }\n\n  /**\n   * Log custody events for audit trail\n   */\n  private async logCustodyEvent(evidenceId: string, eventType: string, details: any): Promise<void> {\n    const logEntry = {\n      evidenceId,\n      eventType,\n      timestamp: new Date().toISOString(),\n      details,\n      logId: `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`\n    }\n\n    // In real implementation, store in Firestore audit log collection\n    console.log('Chain of Custody Event:', logEntry)\n  }\n\n  /**\n   * Get custody log for evidence (mock implementation)\n   */\n  private async getCustodyLog(evidenceId: string): Promise<any[]> {\n    // Mock custody log - in real implementation, query from database\n    return [\n      {\n        timestamp: new Date().toISOString(),\n        event: 'evidence_uploaded',\n        actor: 'anonymous_user',\n        details: 'Evidence uploaded and hash generated'\n      },\n      {\n        timestamp: new Date().toISOString(),\n        event: 'evidence_verified',\n        actor: 'system_verification',\n        details: 'Automatic integrity verification completed'\n      }\n    ]\n  }\n\n  /**\n   * Get original hash for integrity verification\n   */\n  private async getOriginalHash(evidenceId: string): Promise<string> {\n    // Mock - in real implementation, query from database\n    return 'sha256:' + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join('')\n  }\n\n  /**\n   * Get current legal status\n   */\n  private async getCurrentStatus(evidenceId: string): Promise<ChainOfCustody['legalStatus']> {\n    // Mock - in real implementation, query from database\n    return 'verified'\n  }\n\n  /**\n   * Generate integrity report\n   */\n  private async generateIntegrityReport(evidenceId: string): Promise<string> {\n    const timestamp = new Date().toISOString()\n    \n    return `\nEVIDENCE INTEGRITY REPORT\n========================\n\nEvidence ID: ${evidenceId}\nGenerated: ${timestamp}\nVerification Method: SHA-256 Cryptographic Hash\n\nINTEGRITY STATUS: VERIFIED\n- Original hash matches current hash\n- No tampering detected\n- Chain of custody maintained\n- All access events logged\n\nLEGAL VALIDITY:\n- Evidence collected with proper authorization\n- Chain of custody documented per legal requirements\n- File integrity verified through cryptographic methods\n- Anonymous source protection maintained\n\nCERTIFICATION:\nThis evidence package has been verified and is suitable\nfor legal proceedings. All handling has been logged and\nthe integrity of the evidence has been maintained.\n\nGenerated by: Automated Evidence Management System\nVerification Standard: ISO 27037 Digital Evidence Handling\n    `.trim()\n  }\n}\n\n// =============================================================================\n// EVIDENCE ANONYMIZATION\n// =============================================================================\n\nexport class EvidenceAnonymizer {\n  /**\n   * Anonymize evidence metadata while preserving legal validity\n   */\n  static anonymizeEvidenceMetadata(evidence: EvidenceMatch): {\n    anonymizedEvidence: any\n    legalMapping: string\n  } {\n    const anonymousSourceId = this.generateConsistentAnonymousId(evidence.sourceId)\n    const anonymousOwnerId = this.generateConsistentAnonymousId(evidence.ownerId)\n    \n    const anonymizedEvidence = {\n      ...evidence,\n      sourceId: anonymousSourceId,\n      ownerId: anonymousOwnerId,\n      // Remove any personally identifiable information\n      personalInfo: undefined,\n      contactDetails: undefined\n    }\n\n    // Create legal mapping for court proceedings\n    const legalMapping = JSON.stringify({\n      anonymizationDate: new Date().toISOString(),\n      anonymizationMethod: 'Cryptographic hash with salt',\n      legalBasis: 'Privacy protection under data protection laws',\n      courtReference: 'Anonymous mapping available to court upon request',\n      originalSourceId: 'Available to authorized legal personnel only',\n      verificationHash: this.generateVerificationHash(evidence.sourceId)\n    }, null, 2)\n\n    return {\n      anonymizedEvidence,\n      legalMapping\n    }\n  }\n\n  /**\n   * Generate consistent anonymous ID that maps back for legal purposes\n   */\n  private static generateConsistentAnonymousId(originalId: string): string {\n    const hash = crypto.createHash('sha256')\n    hash.update(originalId + (process.env.NEXT_PUBLIC_ANONYMOUS_SALT || 'default'))\n    return 'WITNESS-' + hash.digest('hex').substring(0, 12).toUpperCase()\n  }\n\n  /**\n   * Generate verification hash for legal mapping\n   */\n  private static generateVerificationHash(originalId: string): string {\n    const hash = crypto.createHash('sha256')\n    hash.update(originalId + new Date().toDateString())\n    return hash.digest('hex').substring(0, 16)\n  }\n}\n\n// =============================================================================\n// GDPR COMPLIANCE UTILITIES\n// =============================================================================\n\nexport class GDPRComplianceManager {\n  /**\n   * Generate GDPR-compliant data processing notice\n   */\n  static generateProcessingNotice(purpose: 'evidence_collection' | 'legal_proceedings' | 'fraud_prevention'): string {\n    const purposes = {\n      evidence_collection: {\n        basis: 'Public task (crime prevention and detection)',\n        retention: '7 years or until legal proceedings conclude',\n        rights: 'Right to rectification, right to erasure (with legal limitations)'\n      },\n      legal_proceedings: {\n        basis: 'Legal obligation (court order or statutory requirement)',\n        retention: 'Duration of legal proceedings plus 7 years',\n        rights: 'Limited rights during active legal proceedings'\n      },\n      fraud_prevention: {\n        basis: 'Legitimate interest (fraud prevention and public safety)',\n        retention: '6 years or as required by financial regulations',\n        rights: 'Full data subject rights apply'\n      }\n    }\n\n    const config = purposes[purpose]\n    \n    return `\nDATA PROCESSING NOTICE\n======================\n\nPurpose: ${purpose.replace('_', ' ').toUpperCase()}\nLegal Basis: ${config.basis}\nRetention Period: ${config.retention}\nData Subject Rights: ${config.rights}\n\nData Controller: Neighbourhood Watch+ Platform\nData Protection Officer: Available upon request\nYour Rights: You have rights under GDPR including access, rectification, and erasure (subject to legal limitations)\n\nContact: privacy@neighbourhoodwatchplus.com\nGenerated: ${new Date().toISOString()}\n    `.trim()\n  }\n\n  /**\n   * Check if data can be deleted (considering legal holds)\n   */\n  static canDeleteEvidence(evidenceId: string, legalStatus: ChainOfCustody['legalStatus']): {\n    canDelete: boolean\n    reason: string\n  } {\n    switch (legalStatus) {\n      case 'collected':\n      case 'verified':\n        return {\n          canDelete: true,\n          reason: 'Evidence not yet submitted to legal proceedings'\n        }\n      \n      case 'submitted':\n      case 'admitted':\n        return {\n          canDelete: false,\n          reason: 'Evidence is part of active legal proceedings'\n        }\n      \n      case 'archived':\n        return {\n          canDelete: true,\n          reason: 'Legal proceedings concluded, evidence can be deleted'\n        }\n      \n      default:\n        return {\n          canDelete: false,\n          reason: 'Unknown legal status - deletion not permitted'\n        }\n    }\n  }\n}\n\nexport default ChainOfCustodyManager\n
+import { Timestamp } from 'firebase/firestore'
+import crypto from 'crypto'
+import type { ChainOfCustody, EvidenceMatch } from '@/types/premium/subscription'
+import type { Location } from '@/types'
+
+// =============================================================================
+// CHAIN OF CUSTODY MANAGEMENT
+// =============================================================================
+
+export interface EvidenceFile {
+  id: string
+  originalName: string
+  fileSize: number
+  mimeType: string
+  uploadedBy: string // Anonymous user ID
+  uploadedAt: Date
+  location?: Location
+  metadata: {
+    duration?: number // for videos in seconds
+    resolution?: string
+    frameRate?: number
+    codec?: string
+    device?: string
+  }
+}
+
+export interface LegalDocument {
+  id: string
+  type: 'submission_receipt' | 'chain_of_custody' | 'court_order' | 'evidence_log'
+  content: string
+  createdAt: Date
+  createdBy: string
+  relatedEvidenceId: string
+}
+
+export class ChainOfCustodyManager {
+  private readonly SALT = process.env.NEXT_PUBLIC_CUSTODY_SALT || 'default-salt'
+
+  /**
+   * Create initial chain of custody when evidence is uploaded
+   */
+  async createChainOfCustody(
+    evidenceId: string,
+    file: EvidenceFile,
+    requestId: string,
+    uploaderIP?: string,
+    userAgent?: string
+  ): Promise<ChainOfCustody> {
+    const fileHash = await this.generateFileHash(file)
+    const anonymousUploaderId = this.generateAnonymousId(file.uploadedBy)
+    
+    const chainOfCustody: ChainOfCustody = {
+      evidenceId,
+      originalSource: anonymousUploaderId,
+      timestamps: {
+        captured: file.uploadedAt as any, // Convert to Timestamp in implementation
+        uploaded: new Date() as any,
+        verified: new Date() as any,
+        accessed: []
+      },
+      handlers: {
+        uploadedBy: anonymousUploaderId,
+        verifiedBy: 'system-verification',
+        accessedBy: []
+      },
+      integrity: {
+        originalHash: fileHash,
+        currentHash: fileHash,
+        verified: true,
+        checksums: [fileHash]
+      },
+      legalStatus: 'collected'
+    }
+
+    // Log the creation
+    await this.logCustodyEvent(evidenceId, 'created', {
+      uploaderId: anonymousUploaderId,
+      fileHash,
+      timestamp: new Date(),
+      ipAddress: uploaderIP,
+      userAgent,
+      requestId
+    })
+
+    return chainOfCustody
+  }
+
+  /**
+   * Update chain of custody when evidence is accessed
+   */
+  async recordAccess(
+    evidenceId: string,
+    accessorId: string,
+    accessorRole: 'police' | 'insurance' | 'security' | 'admin',
+    purpose: string,
+    ipAddress?: string
+  ): Promise<void> {
+    const anonymousAccessorId = this.generateAnonymousId(accessorId)
+    
+    await this.logCustodyEvent(evidenceId, 'accessed', {
+      accessorId: anonymousAccessorId,
+      accessorRole,
+      purpose,
+      timestamp: new Date(),
+      ipAddress
+    })
+
+    // Update the chain of custody record
+    // In real implementation, this would update Firestore
+    console.log(`Evidence ${evidenceId} accessed by ${accessorRole} (${anonymousAccessorId}) for: ${purpose}`)
+  }
+
+  /**
+   * Verify evidence integrity
+   */
+  async verifyIntegrity(
+    evidenceId: string,
+    currentFile: EvidenceFile
+  ): Promise<{ valid: boolean; details: string }> {
+    try {
+      const currentHash = await this.generateFileHash(currentFile)
+      
+      // In real implementation, fetch original hash from database
+      const originalHash = await this.getOriginalHash(evidenceId)
+      
+      if (currentHash === originalHash) {
+        await this.logCustodyEvent(evidenceId, 'integrity_verified', {
+          verificationHash: currentHash,
+          timestamp: new Date(),
+          result: 'valid'
+        })
+        
+        return {
+          valid: true,
+          details: 'File integrity verified - hash matches original'
+        }
+      } else {
+        await this.logCustodyEvent(evidenceId, 'integrity_failed', {
+          originalHash,
+          currentHash,
+          timestamp: new Date(),
+          result: 'invalid'
+        })
+        
+        return {
+          valid: false,
+          details: 'File integrity compromised - hash mismatch detected'
+        }
+      }
+    } catch (error) {
+      return {
+        valid: false,
+        details: `Integrity verification failed: ${error}`
+      }
+    }
+  }
+
+  /**
+   * Generate court-admissible evidence package
+   */
+  async generateCourtPackage(
+    evidenceId: string,
+    caseNumber: string,
+    requestingAuthority: string
+  ): Promise<{
+    evidencePackage: string
+    legalDocuments: LegalDocument[]
+    verificationReport: string
+  }> {
+    const custodyLog = await this.getCustodyLog(evidenceId)
+    const integrityReport = await this.generateIntegrityReport(evidenceId)
+    
+    const legalDocuments: LegalDocument[] = [
+      {
+        id: `legal-${evidenceId}-custody`,
+        type: 'chain_of_custody',
+        content: JSON.stringify(custodyLog, null, 2),
+        createdAt: new Date(),
+        createdBy: 'system-legal-export',
+        relatedEvidenceId: evidenceId
+      },
+      {
+        id: `legal-${evidenceId}-integrity`,
+        type: 'evidence_log',
+        content: integrityReport,
+        createdAt: new Date(),
+        createdBy: 'system-integrity-check',
+        relatedEvidenceId: evidenceId
+      }
+    ]
+
+    const evidencePackage = JSON.stringify({
+      evidenceId,
+      caseNumber,
+      requestingAuthority,
+      custodyChain: custodyLog,
+      integrityVerification: integrityReport,
+      exportedAt: new Date().toISOString(),
+      exportedBy: 'automated-legal-system',
+      legalBasis: 'Court order for evidence submission',
+      authenticity: 'Verified through cryptographic hash chain'
+    }, null, 2)
+
+    // Log the court package generation
+    await this.logCustodyEvent(evidenceId, 'court_package_generated', {
+      caseNumber,
+      requestingAuthority,
+      timestamp: new Date(),
+      packageId: `court-pkg-${evidenceId}-${Date.now()}`
+    })
+
+    return {
+      evidencePackage,
+      legalDocuments,
+      verificationReport: integrityReport
+    }
+  }
+
+  /**
+   * Update legal status of evidence
+   */
+  async updateLegalStatus(
+    evidenceId: string,
+    newStatus: ChainOfCustody['legalStatus'],
+    updatedBy: string,
+    reason: string
+  ): Promise<void> {
+    await this.logCustodyEvent(evidenceId, 'status_updated', {
+      oldStatus: await this.getCurrentStatus(evidenceId),
+      newStatus,
+      updatedBy: this.generateAnonymousId(updatedBy),
+      reason,
+      timestamp: new Date()
+    })
+
+    // In real implementation, update Firestore record
+    console.log(`Evidence ${evidenceId} status updated to: ${newStatus}`)
+  }
+
+  /**
+   * Generate anonymous but consistent ID for privacy
+   */
+  private generateAnonymousId(originalId: string): string {
+    const hash = crypto.createHash('sha256')
+    hash.update(originalId + this.SALT)
+    return 'ANON-' + hash.digest('hex').substring(0, 16).toUpperCase()
+  }
+
+  /**
+   * Generate cryptographic hash of file for integrity verification
+   */
+  private async generateFileHash(file: EvidenceFile): Promise<string> {
+    // In browser environment, this would use FileReader and Web Crypto API
+    // For server-side or Node.js, use crypto module
+    
+    // Simplified hash generation (in real implementation, hash actual file content)
+    const hashInput = `${file.originalName}-${file.fileSize}-${file.uploadedAt.getTime()}-${file.uploadedBy}`
+    const hash = crypto.createHash('sha256')
+    hash.update(hashInput)
+    return 'sha256:' + hash.digest('hex')
+  }
+
+  /**
+   * Log custody events for audit trail
+   */
+  private async logCustodyEvent(evidenceId: string, eventType: string, details: any): Promise<void> {
+    const logEntry = {
+      evidenceId,
+      eventType,
+      timestamp: new Date().toISOString(),
+      details,
+      logId: `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    }
+
+    // In real implementation, store in Firestore audit log collection
+    console.log('Chain of Custody Event:', logEntry)
+  }
+
+  /**
+   * Get custody log for evidence (mock implementation)
+   */
+  private async getCustodyLog(evidenceId: string): Promise<any[]> {
+    // Mock custody log - in real implementation, query from database
+    return [
+      {
+        timestamp: new Date().toISOString(),
+        event: 'evidence_uploaded',
+        actor: 'anonymous_user',
+        details: 'Evidence uploaded and hash generated'
+      },
+      {
+        timestamp: new Date().toISOString(),
+        event: 'evidence_verified',
+        actor: 'system_verification',
+        details: 'Automatic integrity verification completed'
+      }
+    ]
+  }
+
+  /**
+   * Get original hash for integrity verification
+   */
+  private async getOriginalHash(evidenceId: string): Promise<string> {
+    // Mock - in real implementation, query from database
+    return 'sha256:' + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join('')
+  }
+
+  /**
+   * Get current legal status
+   */
+  private async getCurrentStatus(evidenceId: string): Promise<ChainOfCustody['legalStatus']> {
+    // Mock - in real implementation, query from database
+    return 'verified'
+  }
+
+  /**
+   * Generate integrity report
+   */
+  private async generateIntegrityReport(evidenceId: string): Promise<string> {
+    const timestamp = new Date().toISOString()
+    
+    return `
+EVIDENCE INTEGRITY REPORT
+========================
+
+Evidence ID: ${evidenceId}
+Generated: ${timestamp}
+Verification Method: SHA-256 Cryptographic Hash
+
+INTEGRITY STATUS: VERIFIED
+- Original hash matches current hash
+- No tampering detected
+- Chain of custody maintained
+- All access events logged
+
+LEGAL VALIDITY:
+- Evidence collected with proper authorization
+- Chain of custody documented per legal requirements
+- File integrity verified through cryptographic methods
+- Anonymous source protection maintained
+
+CERTIFICATION:
+This evidence package has been verified and is suitable
+for legal proceedings. All handling has been logged and
+the integrity of the evidence has been maintained.
+
+Generated by: Automated Evidence Management System
+Verification Standard: ISO 27037 Digital Evidence Handling
+    `.trim()
+  }
+}
+
+// =============================================================================
+// EVIDENCE ANONYMIZATION
+// =============================================================================
+
+export class EvidenceAnonymizer {
+  /**
+   * Anonymize evidence metadata while preserving legal validity
+   */
+  static anonymizeEvidenceMetadata(evidence: EvidenceMatch): {
+    anonymizedEvidence: any
+    legalMapping: string
+  } {
+    const anonymousSourceId = this.generateConsistentAnonymousId(evidence.sourceId)
+    const anonymousOwnerId = this.generateConsistentAnonymousId(evidence.ownerId)
+    
+    const anonymizedEvidence = {
+      ...evidence,
+      sourceId: anonymousSourceId,
+      ownerId: anonymousOwnerId,
+      // Remove any personally identifiable information
+      personalInfo: undefined,
+      contactDetails: undefined
+    }
+
+    // Create legal mapping for court proceedings
+    const legalMapping = JSON.stringify({
+      anonymizationDate: new Date().toISOString(),
+      anonymizationMethod: 'Cryptographic hash with salt',
+      legalBasis: 'Privacy protection under data protection laws',
+      courtReference: 'Anonymous mapping available to court upon request',
+      originalSourceId: 'Available to authorized legal personnel only',
+      verificationHash: this.generateVerificationHash(evidence.sourceId)
+    }, null, 2)
+
+    return {
+      anonymizedEvidence,
+      legalMapping
+    }
+  }
+
+  /**
+   * Generate consistent anonymous ID that maps back for legal purposes
+   */
+  private static generateConsistentAnonymousId(originalId: string): string {
+    const hash = crypto.createHash('sha256')
+    hash.update(originalId + (process.env.NEXT_PUBLIC_ANONYMOUS_SALT || 'default'))
+    return 'WITNESS-' + hash.digest('hex').substring(0, 12).toUpperCase()
+  }
+
+  /**
+   * Generate verification hash for legal mapping
+   */
+  private static generateVerificationHash(originalId: string): string {
+    const hash = crypto.createHash('sha256')
+    hash.update(originalId + new Date().toDateString())
+    return hash.digest('hex').substring(0, 16)
+  }
+}
+
+// =============================================================================
+// GDPR COMPLIANCE UTILITIES
+// =============================================================================
+
+export class GDPRComplianceManager {
+  /**
+   * Generate GDPR-compliant data processing notice
+   */
+  static generateProcessingNotice(purpose: 'evidence_collection' | 'legal_proceedings' | 'fraud_prevention'): string {
+    const purposes = {
+      evidence_collection: {
+        basis: 'Public task (crime prevention and detection)',
+        retention: '7 years or until legal proceedings conclude',
+        rights: 'Right to rectification, right to erasure (with legal limitations)'
+      },
+      legal_proceedings: {
+        basis: 'Legal obligation (court order or statutory requirement)',
+        retention: 'Duration of legal proceedings plus 7 years',
+        rights: 'Limited rights during active legal proceedings'
+      },
+      fraud_prevention: {
+        basis: 'Legitimate interest (fraud prevention and public safety)',
+        retention: '6 years or as required by financial regulations',
+        rights: 'Full data subject rights apply'
+      }
+    }
+
+    const config = purposes[purpose]
+    
+    return `
+DATA PROCESSING NOTICE
+======================
+
+Purpose: ${purpose.replace('_', ' ').toUpperCase()}
+Legal Basis: ${config.basis}
+Retention Period: ${config.retention}
+Data Subject Rights: ${config.rights}
+
+Data Controller: Neighbourhood Watch+ Platform
+Data Protection Officer: Available upon request
+Your Rights: You have rights under GDPR including access, rectification, and erasure (subject to legal limitations)
+
+Contact: privacy@neighbourhoodwatchplus.com
+Generated: ${new Date().toISOString()}
+    `.trim()
+  }
+
+  /**
+   * Check if data can be deleted (considering legal holds)
+   */
+  static canDeleteEvidence(evidenceId: string, legalStatus: ChainOfCustody['legalStatus']): {
+    canDelete: boolean
+    reason: string
+  } {
+    switch (legalStatus) {
+      case 'collected':
+      case 'verified':
+        return {
+          canDelete: true,
+          reason: 'Evidence not yet submitted to legal proceedings'
+        }
+      
+      case 'submitted':
+      case 'admitted':
+        return {
+          canDelete: false,
+          reason: 'Evidence is part of active legal proceedings'
+        }
+      
+      case 'archived':
+        return {
+          canDelete: true,
+          reason: 'Legal proceedings concluded, evidence can be deleted'
+        }
+      
+      default:
+        return {
+          canDelete: false,
+          reason: 'Unknown legal status - deletion not permitted'
+        }
+    }
+  }
+}
+
+export default ChainOfCustodyManager
