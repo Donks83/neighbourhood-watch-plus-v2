@@ -296,7 +296,7 @@ export default function VerificationTrackingCard({
                       <div>
                         <div className="font-medium text-sm">{camera.name}</div>
                         <div className="text-xs text-gray-600 capitalize">
-                          {camera.type} • Added {camera.createdAt?.toLocaleDateString()}
+                          {camera.type} • Added {camera.createdAt?.toDate().toLocaleDateString()}
                         </div>
                       </div>
                     </div>
