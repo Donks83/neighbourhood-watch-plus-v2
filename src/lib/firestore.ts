@@ -233,12 +233,12 @@ export const getNearbyCameras = async (location: Location, radiusKm: number = 1)
 export const updateCamera = async (cameraId: string, updates: Partial<RegisteredCamera>): Promise<void> => {
   try {
     const cameraRef = doc(db, 'cameras', cameraId)
-    const updateData = {
+    const updateData: any = {
       ...updates,
       lastUpdated: serverTimestamp()
     }
     
-    // Handle location updates
+    // Handle location updates - convert to GeoPoint for Firestore
     if (updates.location) {
       updateData.location = new GeoPoint(updates.location.lat, updates.location.lng)
       updateData.locationGeohash = generateGeohash(updates.location.lat, updates.location.lng)
