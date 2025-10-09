@@ -543,12 +543,12 @@ async function getPendingVerifications(adminId: string, limitCount: number = 20)
           },
           cameraLocation: {
             coordinates: {
-              lat: camera.location.latitude,
-              lng: camera.location.longitude
+              lat: camera.location.lat,
+              lng: camera.location.lng
             },
             displayCoordinates: {
-              lat: camera.displayLocation.latitude,
-              lng: camera.displayLocation.longitude
+              lat: camera.displayLocation.lat,
+              lng: camera.displayLocation.lng
             }
           },
           cameraDetails: {
