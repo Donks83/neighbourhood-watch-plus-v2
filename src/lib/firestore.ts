@@ -457,16 +457,21 @@ export const getUserRequests = async (userId: string): Promise<FootageRequest[]>
     querySnapshot.forEach((doc) => {
       const data = doc.data()
       requests.push({
-        ...data,
         id: doc.id,
-        location: {
+        requesterId: data.requesterId,
+        requesterEmail: data.requesterEmail,
+        incidentLocation: {
           lat: data.location.latitude,
-          lng: data.location.longitude,
-          address: '', // TODO: Implement reverse geocoding
-          geohash: data.locationGeohash
+          lng: data.location.longitude
         },
-        createdAt: data.createdAt?.toDate() || new Date(),
-        expiresAt: data.expiresAt?.toDate() || new Date()
+        incidentType: data.incident?.type || 'other',
+        incidentDateTime: data.incident?.dateTime || data.createdAt,
+        description: data.incident?.description || '',
+        requestRadius: data.searchRadius || 100,
+        status: data.status,
+        responses: data.responses || [],
+        createdAt: data.createdAt,
+        expiresAt: data.expiresAt
       } as FootageRequest)
     })
 
@@ -514,16 +519,18 @@ export const getRequestsForCameraOwner = async (userId: string): Promise<Footage
 
       if (isWithinRange) {
         relevantRequests.push({
-          ...data,
           id: doc.id,
-          location: {
-            lat: requestLocation.lat,
-            lng: requestLocation.lng,
-            address: '',
-            geohash: data.locationGeohash
-          },
-          createdAt: data.createdAt?.toDate() || new Date(),
-          expiresAt: data.expiresAt?.toDate() || new Date()
+          requesterId: data.requesterId,
+          requesterEmail: data.requesterEmail,
+          incidentLocation: requestLocation,
+          incidentType: data.incident?.type || 'other',
+          incidentDateTime: data.incident?.dateTime || data.createdAt,
+          description: data.incident?.description || '',
+          requestRadius: data.searchRadius || 100,
+          status: data.status,
+          responses: data.responses || [],
+          createdAt: data.createdAt,
+          expiresAt: data.expiresAt
         } as FootageRequest)
       }
     })
