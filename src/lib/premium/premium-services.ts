@@ -89,8 +89,8 @@ export class SubscriptionService {
     const snapshot = await getDocs(q)
     if (snapshot.empty) return null
     
-    const doc = snapshot.docs[0]
-    return { id: doc.id, ...doc.data() } as UserSubscription
+    const docData = snapshot.docs[0]
+    return { id: docData.id, ...docData.data() } as unknown as UserSubscription
   }
 
   /**
@@ -208,10 +208,10 @@ export class IncidentReportingService {
     )
     
     const snapshot = await getDocs(q)
-    const incidents = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as CommunityIncident[]
+    const incidents = snapshot.docs.map(d => ({
+      id: d.id,
+      ...d.data()
+    })) as unknown as CommunityIncident[]
     
     // Filter by location if specified
     if (location) {
@@ -360,7 +360,7 @@ export class EvidenceRequestService {
       throw new Error('Evidence match not found')
     }
     
-    const match = matchDoc.data() as EvidenceMatch
+    const match = matchDoc.data() as unknown as EvidenceMatch
     
     // Create chain of custody if evidence provided
     let chainOfCustodyId: string | undefined
@@ -420,10 +420,10 @@ export class EvidenceRequestService {
     }
     
     const snapshot = await getDocs(q)
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as EvidenceRequest[]
+    return snapshot.docs.map(d => ({
+      id: d.id,
+      ...d.data()
+    })) as unknown as EvidenceRequest[]
   }
 
   private static async notifyCameraOwners(
@@ -488,7 +488,7 @@ export class WalletService {
     const walletDoc = await getDoc(doc(db, PREMIUM_COLLECTIONS.userWallets, userId))
     
     if (walletDoc.exists()) {
-      return walletDoc.data() as UserWallet
+      return walletDoc.data() as unknown as UserWallet
     }
     
     // Create new wallet
@@ -620,10 +620,10 @@ export class RealtimeService {
     )
     
     return onSnapshot(q, (snapshot) => {
-      const matches = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as EvidenceMatch[]
+      const matches = snapshot.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      })) as unknown as EvidenceMatch[]
       
       callback(matches)
     })
@@ -636,9 +636,9 @@ export class RealtimeService {
     userId: string,
     callback: (wallet: UserWallet) => void
   ): () => void {
-    return onSnapshot(doc(db, PREMIUM_COLLECTIONS.userWallets, userId), (doc) => {
-      if (doc.exists()) {
-        callback(doc.data() as UserWallet)
+    return onSnapshot(doc(db, PREMIUM_COLLECTIONS.userWallets, userId), (d) => {
+      if (d.exists()) {
+        callback(d.data() as unknown as UserWallet)
       }
     })
   }
@@ -650,9 +650,9 @@ export class RealtimeService {
     requestId: string,
     callback: (request: EvidenceRequest) => void
   ): () => void {
-    return onSnapshot(doc(db, PREMIUM_COLLECTIONS.evidenceRequests, requestId), (doc) => {
-      if (doc.exists()) {
-        callback({ id: doc.id, ...doc.data() } as EvidenceRequest)
+    return onSnapshot(doc(db, PREMIUM_COLLECTIONS.evidenceRequests, requestId), (d) => {
+      if (d.exists()) {
+        callback({ id: d.id, ...d.data() } as unknown as EvidenceRequest)
       }
     })
   }
