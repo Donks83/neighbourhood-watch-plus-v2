@@ -1,1 +1,412 @@
-'use client'\n\nimport React, { useState, useCallback, useRef } from 'react'\nimport { \n  Upload, \n  X, \n  Camera, \n  FileText, \n  Image as ImageIcon, \n  AlertCircle,\n  CheckCircle,\n  Loader2,\n  Plus\n} from 'lucide-react'\nimport { Button } from '@/components/ui/button'\nimport { Input } from '@/components/ui/input'\nimport { Label } from '@/components/ui/label'\nimport { Textarea } from '@/components/ui/textarea'\nimport { Alert, AlertDescription } from '@/components/ui/alert'\nimport { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'\nimport { cn } from '@/lib/utils'\nimport type { VerificationEvidence } from '@/types/verification'\n\ninterface VerificationEvidenceUploadProps {\n  onEvidenceSubmit: (evidence: VerificationEvidence) => Promise<void>\n  initialEvidence?: VerificationEvidence\n  isSubmitting?: boolean\n  allowMultiplePhotos?: boolean\n  maxPhotos?: number\n  maxFileSize?: number // in MB\n  showUserNotes?: boolean\n  showInstallationDate?: boolean\n  showPurchaseReceipt?: boolean\n  className?: string\n}\n\ninterface UploadedFile {\n  file: File\n  url: string // Preview URL\n  uploadUrl?: string // Actual storage URL after upload\n  isUploading: boolean\n  error?: string\n}\n\nexport default function VerificationEvidenceUpload({\n  onEvidenceSubmit,\n  initialEvidence,\n  isSubmitting = false,\n  allowMultiplePhotos = true,\n  maxPhotos = 5,\n  maxFileSize = 10, // 10MB default\n  showUserNotes = true,\n  showInstallationDate = true,\n  showPurchaseReceipt = true,\n  className\n}: VerificationEvidenceUploadProps) {\n  const [photos, setPhotos] = useState<UploadedFile[]>([])\n  const [documents, setDocuments] = useState<UploadedFile[]>([])\n  const [userNotes, setUserNotes] = useState(initialEvidence?.userNotes || '')\n  const [installationDate, setInstallationDate] = useState(\n    initialEvidence?.installationDate ? \n    initialEvidence.installationDate.toISOString().split('T')[0] : \n    ''\n  )\n  const [purchaseReceipt, setPurchaseReceipt] = useState<UploadedFile | null>(null)\n  const [error, setError] = useState<string | null>(null)\n  \n  const photoInputRef = useRef<HTMLInputElement>(null)\n  const documentInputRef = useRef<HTMLInputElement>(null)\n  const receiptInputRef = useRef<HTMLInputElement>(null)\n\n  // File validation\n  const validateFile = useCallback((file: File, type: 'image' | 'document'): string | null => {\n    // Check file size\n    if (file.size > maxFileSize * 1024 * 1024) {\n      return `File size must be less than ${maxFileSize}MB`\n    }\n    \n    // Check file type\n    if (type === 'image') {\n      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']\n      if (!allowedTypes.includes(file.type)) {\n        return 'Only JPEG, PNG, and WebP images are allowed'\n      }\n    } else {\n      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']\n      if (!allowedTypes.includes(file.type)) {\n        return 'Only PDF and image files are allowed for documents'\n      }\n    }\n    \n    return null\n  }, [maxFileSize])\n\n  // Handle photo upload\n  const handlePhotoUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {\n    const files = Array.from(event.target.files || [])\n    setError(null)\n    \n    if (photos.length + files.length > maxPhotos) {\n      setError(`Maximum ${maxPhotos} photos allowed`)\n      return\n    }\n    \n    const newPhotos: UploadedFile[] = []\n    \n    for (const file of files) {\n      const validationError = validateFile(file, 'image')\n      if (validationError) {\n        setError(validationError)\n        continue\n      }\n      \n      const uploadedFile: UploadedFile = {\n        file,\n        url: URL.createObjectURL(file),\n        isUploading: false\n      }\n      \n      newPhotos.push(uploadedFile)\n    }\n    \n    setPhotos(prev => [...prev, ...newPhotos])\n    \n    // Reset input\n    if (event.target) {\n      event.target.value = ''\n    }\n  }, [photos.length, maxPhotos, validateFile])\n\n  // Handle document upload\n  const handleDocumentUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {\n    const files = Array.from(event.target.files || [])\n    setError(null)\n    \n    const newDocuments: UploadedFile[] = []\n    \n    for (const file of files) {\n      const validationError = validateFile(file, 'document')\n      if (validationError) {\n        setError(validationError)\n        continue\n      }\n      \n      const uploadedFile: UploadedFile = {\n        file,\n        url: URL.createObjectURL(file),\n        isUploading: false\n      }\n      \n      newDocuments.push(uploadedFile)\n    }\n    \n    setDocuments(prev => [...prev, ...newDocuments])\n    \n    // Reset input\n    if (event.target) {\n      event.target.value = ''\n    }\n  }, [validateFile])\n\n  // Handle purchase receipt upload\n  const handleReceiptUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {\n    const file = event.target.files?.[0]\n    if (!file) return\n    \n    setError(null)\n    \n    const validationError = validateFile(file, 'document')\n    if (validationError) {\n      setError(validationError)\n      return\n    }\n    \n    const uploadedFile: UploadedFile = {\n      file,\n      url: URL.createObjectURL(file),\n      isUploading: false\n    }\n    \n    setPurchaseReceipt(uploadedFile)\n    \n    // Reset input\n    if (event.target) {\n      event.target.value = ''\n    }\n  }, [validateFile])\n\n  // Remove photo\n  const removePhoto = useCallback((index: number) => {\n    setPhotos(prev => {\n      const newPhotos = [...prev]\n      // Revoke URL to prevent memory leaks\n      URL.revokeObjectURL(newPhotos[index].url)\n      newPhotos.splice(index, 1)\n      return newPhotos\n    })\n  }, [])\n\n  // Remove document\n  const removeDocument = useCallback((index: number) => {\n    setDocuments(prev => {\n      const newDocuments = [...prev]\n      URL.revokeObjectURL(newDocuments[index].url)\n      newDocuments.splice(index, 1)\n      return newDocuments\n    })\n  }, [])\n\n  // Remove receipt\n  const removeReceipt = useCallback(() => {\n    if (purchaseReceipt) {\n      URL.revokeObjectURL(purchaseReceipt.url)\n      setPurchaseReceipt(null)\n    }\n  }, [purchaseReceipt])\n\n  // Upload files to storage (placeholder - would use Firebase Storage)\n  const uploadFilesToStorage = useCallback(async (files: UploadedFile[]): Promise<string[]> => {\n    // TODO: Implement actual Firebase Storage upload\n    // For now, return placeholder URLs\n    return files.map((file, index) => `https://storage.example.com/${Date.now()}-${index}${file.file.name}`)\n  }, [])\n\n  // Submit evidence\n  const handleSubmit = useCallback(async () => {\n    try {\n      setError(null)\n      \n      // Validate required fields\n      if (photos.length === 0 && documents.length === 0) {\n        setError('Please upload at least one photo or document')\n        return\n      }\n      \n      // Upload files to storage\n      const photoUrls = photos.length > 0 ? await uploadFilesToStorage(photos) : []\n      const documentUrls = documents.length > 0 ? await uploadFilesToStorage(documents) : []\n      const receiptUrl = purchaseReceipt ? (await uploadFilesToStorage([purchaseReceipt]))[0] : undefined\n      \n      // Create evidence object\n      const evidence: VerificationEvidence = {\n        photos: photoUrls,\n        documents: documentUrls,\n        userNotes: userNotes.trim() || undefined,\n        installationDate: installationDate ? new Date(installationDate) : undefined,\n        purchaseReceipt: receiptUrl\n      }\n      \n      await onEvidenceSubmit(evidence)\n    } catch (error: any) {\n      setError(error.message || 'Failed to submit evidence')\n    }\n  }, [photos, documents, purchaseReceipt, userNotes, installationDate, uploadFilesToStorage, onEvidenceSubmit])\n\n  // Cleanup URLs on unmount\n  React.useEffect(() => {\n    return () => {\n      photos.forEach(photo => URL.revokeObjectURL(photo.url))\n      documents.forEach(doc => URL.revokeObjectURL(doc.url))\n      if (purchaseReceipt) {\n        URL.revokeObjectURL(purchaseReceipt.url)\n      }\n    }\n  }, [])\n\n  return (\n    <Card className={cn('w-full', className)}>\n      <CardHeader>\n        <CardTitle className=\"flex items-center gap-2\">\n          <Upload className=\"w-5 h-5\" />\n          Verification Evidence\n        </CardTitle>\n        <CardDescription>\n          Upload photos and documents to help verify your camera installation. \n          Clear photos showing the camera's location and view are most helpful.\n        </CardDescription>\n      </CardHeader>\n      \n      <CardContent className=\"space-y-6\">\n        {/* Error Alert */}\n        {error && (\n          <Alert variant=\"destructive\">\n            <AlertCircle className=\"h-4 w-4\" />\n            <AlertDescription>{error}</AlertDescription>\n          </Alert>\n        )}\n\n        {/* Photos Section */}\n        <div>\n          <Label className=\"text-base font-medium mb-3 block\">\n            Photos of Camera Installation\n          </Label>\n          <div className=\"space-y-4\">\n            {/* Upload Button */}\n            <div>\n              <input\n                ref={photoInputRef}\n                type=\"file\"\n                accept=\"image/jpeg,image/jpg,image/png,image/webp\"\n                multiple={allowMultiplePhotos}\n                onChange={handlePhotoUpload}\n                className=\"hidden\"\n              />\n              <Button\n                type=\"button\"\n                variant=\"outline\"\n                onClick={() => photoInputRef.current?.click()}\n                disabled={photos.length >= maxPhotos}\n                className=\"w-full h-12 border-dashed\"\n              >\n                <Camera className=\"w-4 h-4 mr-2\" />\n                {photos.length === 0 ? 'Add Photos' : `Add More Photos (${photos.length}/${maxPhotos})`}\n              </Button>\n            </div>\n            \n            {/* Photo Grid */}\n            {photos.length > 0 && (\n              <div className=\"grid grid-cols-2 sm:grid-cols-3 gap-4\">\n                {photos.map((photo, index) => (\n                  <div key={index} className=\"relative group\">\n                    <div className=\"aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800\">\n                      <img\n                        src={photo.url}\n                        alt={`Camera photo ${index + 1}`}\n                        className=\"w-full h-full object-cover\"\n                      />\n                    </div>\n                    <Button\n                      type=\"button\"\n                      variant=\"destructive\"\n                      size=\"icon\"\n                      className=\"absolute top-2 right-2 w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity\"\n                      onClick={() => removePhoto(index)}\n                    >\n                      <X className=\"w-3 h-3\" />\n                    </Button>\n                    {photo.isUploading && (\n                      <div className=\"absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg\">\n                        <Loader2 className=\"w-6 h-6 text-white animate-spin\" />\n                      </div>\n                    )}\n                  </div>\n                ))}\n              </div>\n            )}\n          </div>\n        </div>\n\n        {/* Documents Section */}\n        <div>\n          <Label className=\"text-base font-medium mb-3 block\">\n            Supporting Documents (Optional)\n          </Label>\n          <div className=\"space-y-4\">\n            {/* Upload Button */}\n            <div>\n              <input\n                ref={documentInputRef}\n                type=\"file\"\n                accept=\"application/pdf,image/jpeg,image/jpg,image/png\"\n                multiple\n                onChange={handleDocumentUpload}\n                className=\"hidden\"\n              />\n              <Button\n                type=\"button\"\n                variant=\"outline\"\n                onClick={() => documentInputRef.current?.click()}\n                className=\"w-full h-12 border-dashed\"\n              >\n                <FileText className=\"w-4 h-4 mr-2\" />\n                Add Documents\n              </Button>\n            </div>\n            \n            {/* Document List */}\n            {documents.length > 0 && (\n              <div className=\"space-y-2\">\n                {documents.map((document, index) => (\n                  <div key={index} className=\"flex items-center gap-3 p-3 border rounded-lg\">\n                    <FileText className=\"w-5 h-5 text-gray-500\" />\n                    <div className=\"flex-1 min-w-0\">\n                      <p className=\"text-sm font-medium truncate\">{document.file.name}</p>\n                      <p className=\"text-xs text-gray-500\">\n                        {(document.file.size / (1024 * 1024)).toFixed(2)} MB\n                      </p>\n                    </div>\n                    <Button\n                      type=\"button\"\n                      variant=\"ghost\"\n                      size=\"icon\"\n                      className=\"w-8 h-8\"\n                      onClick={() => removeDocument(index)}\n                    >\n                      <X className=\"w-4 h-4\" />\n                    </Button>\n                  </div>\n                ))}\n              </div>\n            )}\n          </div>\n        </div>\n\n        {/* Purchase Receipt Section */}\n        {showPurchaseReceipt && (\n          <div>\n            <Label className=\"text-base font-medium mb-3 block\">\n              Purchase Receipt (Optional)\n            </Label>\n            <div className=\"space-y-4\">\n              {!purchaseReceipt ? (\n                <div>\n                  <input\n                    ref={receiptInputRef}\n                    type=\"file\"\n                    accept=\"application/pdf,image/jpeg,image/jpg,image/png\"\n                    onChange={handleReceiptUpload}\n                    className=\"hidden\"\n                  />\n                  <Button\n                    type=\"button\"\n                    variant=\"outline\"\n                    onClick={() => receiptInputRef.current?.click()}\n                    className=\"w-full h-12 border-dashed\"\n                  >\n                    <FileText className=\"w-4 h-4 mr-2\" />\n                    Add Purchase Receipt\n                  </Button>\n                </div>\n              ) : (\n                <div className=\"flex items-center gap-3 p-3 border rounded-lg bg-green-50 dark:bg-green-900/20\">\n                  <FileText className=\"w-5 h-5 text-green-600\" />\n                  <div className=\"flex-1 min-w-0\">\n                    <p className=\"text-sm font-medium truncate\">{purchaseReceipt.file.name}</p>\n                    <p className=\"text-xs text-gray-500\">\n                      {(purchaseReceipt.file.size / (1024 * 1024)).toFixed(2)} MB\n                    </p>\n                  </div>\n                  <Button\n                    type=\"button\"\n                    variant=\"ghost\"\n                    size=\"icon\"\n                    className=\"w-8 h-8\"\n                    onClick={removeReceipt}\n                  >\n                    <X className=\"w-4 h-4\" />\n                  </Button>\n                </div>\n              )}\n            </div>\n          </div>\n        )}\n\n        {/* Installation Date */}\n        {showInstallationDate && (\n          <div>\n            <Label htmlFor=\"installation-date\" className=\"text-base font-medium mb-3 block\">\n              Installation Date (Optional)\n            </Label>\n            <Input\n              id=\"installation-date\"\n              type=\"date\"\n              value={installationDate}\n              onChange={(e) => setInstallationDate(e.target.value)}\n              max={new Date().toISOString().split('T')[0]} // Can't be in the future\n              className=\"max-w-xs\"\n            />\n          </div>\n        )}\n\n        {/* User Notes */}\n        {showUserNotes && (\n          <div>\n            <Label htmlFor=\"user-notes\" className=\"text-base font-medium mb-3 block\">\n              Additional Notes (Optional)\n            </Label>\n            <Textarea\n              id=\"user-notes\"\n              value={userNotes}\n              onChange={(e) => setUserNotes(e.target.value)}\n              placeholder=\"Any additional information about your camera setup, viewing angle, or special circumstances...\"\n              rows={4}\n              maxLength={500}\n              className=\"resize-none\"\n            />\n            {userNotes && (\n              <p className=\"text-xs text-gray-500 mt-1\">\n                {userNotes.length}/500 characters\n              </p>\n            )}\n          </div>\n        )}\n\n        {/* Guidelines */}\n        <Alert>\n          <CheckCircle className=\"h-4 w-4\" />\n          <AlertDescription>\n            <strong>Helpful Tips:</strong>\n            <ul className=\"list-disc list-inside mt-2 space-y-1 text-sm\">\n              <li>Include photos showing the camera's location and what it can see</li>\n              <li>Clear, well-lit photos help moderators verify your camera faster</li>\n              <li>Include your camera's model/brand if visible in photos</li>\n              <li>Purchase receipts help establish legitimacy (optional)</li>\n            </ul>\n          </AlertDescription>\n        </Alert>\n\n        {/* Submit Button */}\n        <div className=\"flex gap-3 pt-4\">\n          <Button\n            onClick={handleSubmit}\n            disabled={isSubmitting || (photos.length === 0 && documents.length === 0)}\n            className=\"flex-1\"\n          >\n            {isSubmitting ? (\n              <>\n                <Loader2 className=\"w-4 h-4 mr-2 animate-spin\" />\n                Submitting Evidence...\n              </>\n            ) : (\n              <>\n                <Upload className=\"w-4 h-4 mr-2\" />\n                Submit for Verification\n              </>\n            )}\n          </Button>\n        </div>\n      </CardContent>\n    </Card>\n  )\n}\n
+'use client'
+
+import React, { useState, useCallback, useRef } from 'react'
+import { 
+  Upload, 
+  X, 
+  Camera, 
+  FileText, 
+  Image as ImageIcon, 
+  AlertCircle,
+  CheckCircle,
+  Loader2,
+  Plus
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
+import type { VerificationEvidence } from '@/types/verification'
+
+interface VerificationEvidenceUploadProps {
+  onEvidenceSubmit: (evidence: VerificationEvidence) => Promise<void>
+  initialEvidence?: VerificationEvidence
+  isSubmitting?: boolean
+  allowMultiplePhotos?: boolean
+  maxPhotos?: number
+  maxFileSize?: number // in MB
+  showUserNotes?: boolean
+  showInstallationDate?: boolean
+  showPurchaseReceipt?: boolean
+  className?: string
+}
+
+interface UploadedFile {
+  file: File
+  url: string // Preview URL
+  uploadUrl?: string // Actual storage URL after upload
+  isUploading: boolean
+  error?: string
+}
+
+export default function VerificationEvidenceUpload({
+  onEvidenceSubmit,
+  initialEvidence,
+  isSubmitting = false,
+  allowMultiplePhotos = true,
+  maxPhotos = 5,
+  maxFileSize = 10, // 10MB default
+  showUserNotes = true,
+  showInstallationDate = true,
+  showPurchaseReceipt = true,
+  className
+}: VerificationEvidenceUploadProps) {
+  const [photos, setPhotos] = useState<UploadedFile[]>([])
+  const [documents, setDocuments] = useState<UploadedFile[]>([])
+  const [userNotes, setUserNotes] = useState(initialEvidence?.userNotes || '')
+  const [installationDate, setInstallationDate] = useState(
+    initialEvidence?.installationDate ? 
+    new Date(initialEvidence.installationDate).toISOString().split('T')[0] : 
+    ''
+  )
+  const [purchaseReceipt, setPurchaseReceipt] = useState<UploadedFile | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  
+  const photoInputRef = useRef<HTMLInputElement>(null)
+  const documentInputRef = useRef<HTMLInputElement>(null)
+  const receiptInputRef = useRef<HTMLInputElement>(null)
+
+  // File validation
+  const validateFile = useCallback((file: File, type: 'image' | 'document'): string | null => {
+    const maxSizeBytes = maxFileSize * 1024 * 1024
+    
+    if (file.size > maxSizeBytes) {
+      return `File size must be less than ${maxFileSize}MB`
+    }
+    
+    if (type === 'image') {
+      if (!file.type.startsWith('image/')) {
+        return 'File must be an image'
+      }
+    } else if (type === 'document') {
+      const validTypes = ['image/', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats']
+      if (!validTypes.some(t => file.type.includes(t))) {
+        return 'File must be an image or PDF/Word document'
+      }
+    }
+    
+    return null
+  }, [maxFileSize])
+
+  // Handle photo upload
+  const handlePhotoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    setError(null)
+    
+    if (!allowMultiplePhotos && photos.length > 0) {
+      setError('Only one photo allowed')
+      return
+    }
+    
+    if (photos.length + files.length > maxPhotos) {
+      setError(`Maximum ${maxPhotos} photos allowed`)
+      return
+    }
+    
+    const newPhotos: UploadedFile[] = []
+    
+    for (const file of files) {
+      const validationError = validateFile(file, 'image')
+      if (validationError) {
+        setError(validationError)
+        continue
+      }
+      
+      newPhotos.push({
+        file,
+        url: URL.createObjectURL(file),
+        isUploading: false
+      })
+    }
+    
+    setPhotos(prev => [...prev, ...newPhotos])
+    
+    if (e.target) {
+      e.target.value = ''
+    }
+  }, [photos, allowMultiplePhotos, maxPhotos, validateFile])
+
+  // Handle document upload
+  const handleDocumentUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    setError(null)
+    
+    const newDocuments: UploadedFile[] = []
+    
+    for (const file of files) {
+      const validationError = validateFile(file, 'document')
+      if (validationError) {
+        setError(validationError)
+        continue
+      }
+      
+      newDocuments.push({
+        file,
+        url: URL.createObjectURL(file),
+        isUploading: false
+      })
+    }
+    
+    setDocuments(prev => [...prev, ...newDocuments])
+    
+    if (e.target) {
+      e.target.value = ''
+    }
+  }, [validateFile])
+
+  // Handle receipt upload
+  const handleReceiptUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    setError(null)
+    
+    const validationError = validateFile(file, 'document')
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+    
+    setPurchaseReceipt({
+      file,
+      url: URL.createObjectURL(file),
+      isUploading: false
+    })
+    
+    if (e.target) {
+      e.target.value = ''
+    }
+  }, [validateFile])
+
+  // Remove photo
+  const removePhoto = useCallback((index: number) => {
+    setPhotos(prev => {
+      const updated = [...prev]
+      URL.revokeObjectURL(updated[index].url)
+      updated.splice(index, 1)
+      return updated
+    })
+  }, [])
+
+  // Remove document
+  const removeDocument = useCallback((index: number) => {
+    setDocuments(prev => {
+      const updated = [...prev]
+      URL.revokeObjectURL(updated[index].url)
+      updated.splice(index, 1)
+      return updated
+    })
+  }, [])
+
+  // Remove receipt
+  const removeReceipt = useCallback(() => {
+    if (purchaseReceipt) {
+      URL.revokeObjectURL(purchaseReceipt.url)
+      setPurchaseReceipt(null)
+    }
+  }, [purchaseReceipt])
+
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    
+    if (photos.length === 0) {
+      setError('At least one camera photo is required')
+      return
+    }
+    
+    const evidence: VerificationEvidence = {
+      cameraPhotos: photos.map(p => p.url),
+      documents: documents.map(d => d.url),
+      purchaseReceipt: purchaseReceipt?.url,
+      userNotes: userNotes || undefined,
+      installationDate: installationDate ? new Date(installationDate) : undefined
+    }
+    
+    try {
+      await onEvidenceSubmit(evidence)
+    } catch (err: any) {
+      setError(err.message || 'Failed to submit evidence')
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className={cn('space-y-6', className)}>
+      {/* Error Alert */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Camera Photos */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Camera className="w-5 h-5" />
+            Camera Photos *
+          </CardTitle>
+          <CardDescription>
+            Upload clear photos of your camera installation
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Upload Button */}
+          <div className="flex flex-wrap gap-3">
+            {photos.map((photo, index) => (
+              <div key={index} className="relative w-24 h-24 rounded-lg overflow-hidden border-2 border-gray-200">
+                <img 
+                  src={photo.url} 
+                  alt={`Camera photo ${index + 1}`}
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => removePhoto(index)}
+                  className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+            
+            {photos.length < maxPhotos && (
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center hover:border-gray-400 transition-colors"
+              >
+                <Plus className="w-6 h-6 text-gray-400 mb-1" />
+                <span className="text-xs text-gray-500">Add Photo</span>
+              </button>
+            )}
+          </div>
+          
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            multiple={allowMultiplePhotos}
+            onChange={handlePhotoUpload}
+            className="hidden"
+          />
+          
+          <p className="text-xs text-gray-500">
+            {allowMultiplePhotos 
+              ? `Upload up to ${maxPhotos} photos (${photos.length}/${maxPhotos})`
+              : 'Upload one clear photo of your camera'
+            }
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Installation Date */}
+      {showInstallationDate && (
+        <div className="space-y-2">
+          <Label htmlFor="installationDate">Installation Date (Optional)</Label>
+          <Input
+            id="installationDate"
+            type="date"
+            value={installationDate}
+            onChange={(e) => setInstallationDate(e.target.value)}
+            max={new Date().toISOString().split('T')[0]}
+          />
+        </div>
+      )}
+
+      {/* Purchase Receipt */}
+      {showPurchaseReceipt && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Purchase Receipt (Optional)
+            </CardTitle>
+            <CardDescription>
+              Upload proof of purchase to strengthen verification
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {purchaseReceipt ? (
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <FileText className="w-8 h-8 text-blue-600" />
+                <div className="flex-1">
+                  <p className="font-medium text-sm">{purchaseReceipt.file.name}</p>
+                  <p className="text-xs text-gray-500">
+                    {(purchaseReceipt.file.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={removeReceipt}
+                  className="p-1 hover:bg-gray-200 rounded"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => receiptInputRef.current?.click()}
+                  className="w-full"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload Receipt
+                </Button>
+                <input
+                  ref={receiptInputRef}
+                  type="file"
+                  accept="image/*,.pdf,.doc,.docx"
+                  onChange={handleReceiptUpload}
+                  className="hidden"
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* User Notes */}
+      {showUserNotes && (
+        <div className="space-y-2">
+          <Label htmlFor="userNotes">Additional Notes (Optional)</Label>
+          <Textarea
+            id="userNotes"
+            value={userNotes}
+            onChange={(e) => setUserNotes(e.target.value)}
+            placeholder="Any additional information about your camera installation..."
+            rows={4}
+          />
+        </div>
+      )}
+
+      {/* Submit Button */}
+      <div className="flex gap-3">
+        <Button
+          type="submit"
+          disabled={isSubmitting || photos.length === 0}
+          className="flex-1"
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Submitting...
+            </>
+          ) : (
+            <>
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Submit Evidence
+            </>
+          )}
+        </Button>
+      </div>
+    </form>
+  )
+}
