@@ -409,12 +409,10 @@ export const submitIncidentReport = async (
       locationGeohash: generateGeohash(location.lat, location.lng),
       incident: {
         type: incidentData.incidentType,
-        date: incidentData.date,
-        time: incidentData.time,
-        description: incidentData.description,
-        priority: incidentData.priority || 'medium'
+        dateTime: incidentData.incidentDateTime,
+        description: incidentData.description
       },
-      searchRadius: incidentData.searchRadius,
+      searchRadius: incidentData.requestRadius,
       status: 'active',
       createdAt: serverTimestamp(),
       expiresAt: new Timestamp(
