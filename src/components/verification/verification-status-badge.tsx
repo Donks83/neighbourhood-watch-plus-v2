@@ -170,14 +170,15 @@ export function VerificationStatusIcon({
   }
   
   return (
-    <Icon 
-      className={cn(
-        iconSizes[size],
-        config.color,
-        className
-      )}
-      title={showTooltip ? config.description : undefined}
-    />
+    <span title={showTooltip ? config.description : undefined}>
+      <Icon 
+        className={cn(
+          iconSizes[size],
+          config.color,
+          className
+        )}
+      />
+    </span>
   )
 }
 
