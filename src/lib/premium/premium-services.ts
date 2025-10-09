@@ -1,1 +1,667 @@
-import { \n  collection, \n  doc, \n  addDoc, \n  updateDoc, \n  deleteDoc, \n  getDocs, \n  getDoc,\n  query, \n  where, \n  orderBy, \n  limit,\n  Timestamp,\n  writeBatch,\n  onSnapshot\n} from 'firebase/firestore'\nimport { db } from '@/lib/firebase'\nimport type { \n  UserSubscription, \n  CommunityIncident, \n  EvidenceRequest, \n  EvidenceMatch, \n  TokenReward, \n  UserWallet, \n  ChainOfCustody,\n  UserRole \n} from '@/types/premium/subscription'\nimport type { RegisteredCamera } from '@/types/camera'\nimport { EvidenceMatchingEngine, type MatchingCriteria } from './evidence-matching'\nimport { ChainOfCustodyManager } from './chain-of-custody'\nimport { LocationPrivacyManager } from './privacy-manager'\n\n// =============================================================================\n// FIRESTORE COLLECTIONS\n// =============================================================================\n\nexport const PREMIUM_COLLECTIONS = {\n  userSubscriptions: 'userSubscriptions',\n  communityIncidents: 'communityIncidents', \n  evidenceRequests: 'evidenceRequests',\n  evidenceMatches: 'evidenceMatches',\n  tokenRewards: 'tokenRewards',\n  userWallets: 'userWallets',\n  chainOfCustody: 'chainOfCustody',\n  auditLogs: 'auditLogs',\n  anonymousUsers: 'anonymousUsers'\n} as const\n\n// =============================================================================\n// SUBSCRIPTION MANAGEMENT\n// =============================================================================\n\nexport class SubscriptionService {\n  /**\n   * Create new user subscription\n   */\n  static async createSubscription(subscription: Omit<UserSubscription, 'createdAt' | 'updatedAt'>): Promise<string> {\n    const subscriptionData = {\n      ...subscription,\n      createdAt: Timestamp.now(),\n      updatedAt: Timestamp.now()\n    }\n    \n    const docRef = await addDoc(collection(db, PREMIUM_COLLECTIONS.userSubscriptions), subscriptionData)\n    \n    // Update user profile with subscription info\n    await this.updateUserProfile(subscription.userId, {\n      role: subscription.role,\n      subscription: {\n        tier: subscription.tier.name,\n        status: subscription.status\n      }\n    })\n    \n    return docRef.id\n  }\n\n  /**\n   * Get user subscription\n   */\n  static async getUserSubscription(userId: string): Promise<UserSubscription | null> {\n    const q = query(\n      collection(db, PREMIUM_COLLECTIONS.userSubscriptions),\n      where('userId', '==', userId),\n      where('status', 'in', ['active', 'trial']),\n      limit(1)\n    )\n    \n    const snapshot = await getDocs(q)\n    if (snapshot.empty) return null\n    \n    const doc = snapshot.docs[0]\n    return { id: doc.id, ...doc.data() } as UserSubscription\n  }\n\n  /**\n   * Update subscription usage\n   */\n  static async updateUsage(userId: string, requestsUsed: number, amountSpent: number): Promise<void> {\n    const subscription = await this.getUserSubscription(userId)\n    if (!subscription) throw new Error('No active subscription found')\n    \n    const updatedUsage = {\n      monthlyRequests: subscription.usage.monthlyRequests + requestsUsed,\n      totalSpent: subscription.usage.totalSpent + amountSpent,\n      requestsRemaining: Math.max(0, subscription.usage.requestsRemaining - requestsUsed)\n    }\n    \n    await updateDoc(doc(db, PREMIUM_COLLECTIONS.userSubscriptions, subscription.id!), {\n      usage: updatedUsage,\n      updatedAt: Timestamp.now()\n    })\n  }\n\n  /**\n   * Check if user can make evidence request\n   */\n  static async canMakeRequest(userId: string): Promise<{\n    canRequest: boolean\n    reason?: string\n    requestsRemaining?: number\n  }> {\n    const subscription = await this.getUserSubscription(userId)\n    \n    if (!subscription) {\n      return { canRequest: false, reason: 'No active subscription' }\n    }\n    \n    if (subscription.status !== 'active' && subscription.status !== 'trial') {\n      return { canRequest: false, reason: 'Subscription not active' }\n    }\n    \n    if (subscription.usage.requestsRemaining <= 0) {\n      return { \n        canRequest: false, \n        reason: 'Monthly request limit reached',\n        requestsRemaining: 0\n      }\n    }\n    \n    return { \n      canRequest: true, \n      requestsRemaining: subscription.usage.requestsRemaining \n    }\n  }\n\n  private static async updateUserProfile(userId: string, updates: any): Promise<void> {\n    // Update the existing user profile with subscription info\n    await updateDoc(doc(db, 'users', userId), {\n      ...updates,\n      lastUpdated: Timestamp.now()\n    })\n  }\n}\n\n// =============================================================================\n// INCIDENT REPORTING SERVICE\n// =============================================================================\n\nexport class IncidentReportingService {\n  /**\n   * Create community incident with privacy protection\n   */\n  static async createCommunityIncident(\n    incident: Omit<CommunityIncident, 'id' | 'reportedAt' | 'updatedAt'>\n  ): Promise<string> {\n    // Apply location privacy if needed\n    const privacyManager = new LocationPrivacyManager()\n    let displayLocation = incident.displayLocation\n    \n    if (incident.privacy.anonymousReporting) {\n      const fuzzyLocation = privacyManager.createFuzzyLocation(incident.location)\n      displayLocation = fuzzyLocation.displayLocation\n    }\n    \n    const incidentData = {\n      ...incident,\n      displayLocation,\n      reportedAt: Timestamp.now(),\n      updatedAt: Timestamp.now()\n    }\n    \n    const docRef = await addDoc(collection(db, PREMIUM_COLLECTIONS.communityIncidents), incidentData)\n    \n    // Log the incident creation\n    await this.logAuditEvent('incident_created', {\n      incidentId: docRef.id,\n      reporterId: incident.reporterId,\n      type: incident.type,\n      location: incident.displayLocation // Use display location for audit\n    })\n    \n    return docRef.id\n  }\n\n  /**\n   * Get incidents visible to user role\n   */\n  static async getIncidentsForRole(\n    userRole: UserRole,\n    location?: { lat: number; lng: number; radius: number }\n  ): Promise<CommunityIncident[]> {\n    let q = query(\n      collection(db, PREMIUM_COLLECTIONS.communityIncidents),\n      where('privacy.visibleTo', 'array-contains', userRole),\n      orderBy('reportedAt', 'desc'),\n      limit(50)\n    )\n    \n    const snapshot = await getDocs(q)\n    const incidents = snapshot.docs.map(doc => ({\n      id: doc.id,\n      ...doc.data()\n    })) as CommunityIncident[]\n    \n    // Filter by location if specified\n    if (location) {\n      return incidents.filter(incident => {\n        const distance = this.calculateDistance(\n          incident.displayLocation,\n          { lat: location.lat, lng: location.lng }\n        )\n        return distance <= location.radius\n      })\n    }\n    \n    return incidents\n  }\n\n  private static calculateDistance(point1: { lat: number; lng: number }, point2: { lat: number; lng: number }): number {\n    const R = 6371000 // Earth's radius in meters\n    const lat1Rad = (point1.lat * Math.PI) / 180\n    const lat2Rad = (point2.lat * Math.PI) / 180\n    const deltaLatRad = ((point2.lat - point1.lat) * Math.PI) / 180\n    const deltaLngRad = ((point2.lng - point1.lng) * Math.PI) / 180\n\n    const a = Math.sin(deltaLatRad / 2) * Math.sin(deltaLatRad / 2) +\n              Math.cos(lat1Rad) * Math.cos(lat2Rad) *\n              Math.sin(deltaLngRad / 2) * Math.sin(deltaLngRad / 2)\n    \n    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))\n    \n    return R * c\n  }\n\n  private static async logAuditEvent(eventType: string, details: any): Promise<void> {\n    await addDoc(collection(db, PREMIUM_COLLECTIONS.auditLogs), {\n      eventType,\n      details,\n      timestamp: Timestamp.now(),\n      id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`\n    })\n  }\n}\n\n// =============================================================================\n// EVIDENCE REQUEST SERVICE\n// =============================================================================\n\nexport class EvidenceRequestService {\n  /**\n   * Create evidence request and find matching sources\n   */\n  static async createEvidenceRequest(\n    request: Omit<EvidenceRequest, 'id' | 'createdAt' | 'updatedAt' | 'matches'>,\n    availableCameras: RegisteredCamera[]\n  ): Promise<{\n    requestId: string\n    matches: EvidenceMatch[]\n    estimatedCost: number\n  }> {\n    // Check if user can make request\n    const canRequest = await SubscriptionService.canMakeRequest(request.requesterId)\n    if (!canRequest.canRequest) {\n      throw new Error(canRequest.reason || 'Cannot make request')\n    }\n    \n    // Create matching criteria\n    const criteria: MatchingCriteria = {\n      incident: {\n        location: request.incident.location,\n        timeWindow: {\n          start: request.incident.timeWindow.start.toDate(),\n          end: request.incident.timeWindow.end.toDate()\n        },\n        radius: request.incident.radius,\n        type: request.incident.type,\n        urgency: request.incident.urgency\n      },\n      targeting: request.targeting,\n      budget: request.budget\n    }\n    \n    // Find matching evidence sources\n    const matchingEngine = new EvidenceMatchingEngine()\n    const matches = await matchingEngine.findPotentialSources(criteria, availableCameras)\n    \n    // Calculate estimated cost\n    const estimatedCost = matches.reduce((total, match) => total + match.estimatedReward, 0)\n    \n    // Create the evidence request\n    const requestData = {\n      ...request,\n      matches: [], // Will be populated separately\n      createdAt: Timestamp.now(),\n      updatedAt: Timestamp.now()\n    }\n    \n    const requestDocRef = await addDoc(collection(db, PREMIUM_COLLECTIONS.evidenceRequests), requestData)\n    const requestId = requestDocRef.id\n    \n    // Create evidence matches\n    const batch = writeBatch(db)\n    const matchIds: string[] = []\n    \n    for (const match of matches) {\n      const matchData = {\n        ...match,\n        requestId,\n        createdAt: Timestamp.now(),\n        updatedAt: Timestamp.now()\n      }\n      \n      const matchDocRef = doc(collection(db, PREMIUM_COLLECTIONS.evidenceMatches))\n      batch.set(matchDocRef, matchData)\n      matchIds.push(matchDocRef.id)\n    }\n    \n    await batch.commit()\n    \n    // Update request with match IDs\n    await updateDoc(requestDocRef, {\n      'matches': matchIds\n    })\n    \n    // Send notifications to camera owners\n    await this.notifyCameraOwners(matches, request)\n    \n    return {\n      requestId,\n      matches,\n      estimatedCost\n    }\n  }\n\n  /**\n   * Respond to evidence request\n   */\n  static async respondToRequest(\n    matchId: string,\n    response: {\n      status: 'accepted' | 'rejected' | 'no_footage'\n      message?: string\n      evidenceUrl?: string\n      evidenceMetadata?: any\n    }\n  ): Promise<void> {\n    const matchDoc = await getDoc(doc(db, PREMIUM_COLLECTIONS.evidenceMatches, matchId))\n    if (!matchDoc.exists()) {\n      throw new Error('Evidence match not found')\n    }\n    \n    const match = matchDoc.data() as EvidenceMatch\n    \n    // Create chain of custody if evidence provided\n    let chainOfCustodyId: string | undefined\n    if (response.evidenceUrl && response.status === 'accepted') {\n      const custodyManager = new ChainOfCustodyManager()\n      const chainOfCustody = await custodyManager.createChainOfCustody(\n        `evidence-${matchId}`,\n        {\n          id: matchId,\n          originalName: `evidence-${Date.now()}`,\n          fileSize: response.evidenceMetadata?.fileSize || 0,\n          mimeType: response.evidenceMetadata?.mimeType || 'video/mp4',\n          uploadedBy: match.ownerId,\n          uploadedAt: new Date(),\n          metadata: response.evidenceMetadata || {}\n        },\n        match.requestId\n      )\n      \n      // Store chain of custody\n      const custodyDocRef = await addDoc(collection(db, PREMIUM_COLLECTIONS.chainOfCustody), chainOfCustody)\n      chainOfCustodyId = custodyDocRef.id\n    }\n    \n    // Update the match with response\n    await updateDoc(doc(db, PREMIUM_COLLECTIONS.evidenceMatches, matchId), {\n      response: {\n        ...response,\n        respondedAt: Timestamp.now()\n      },\n      chainOfCustody: chainOfCustodyId,\n      updatedAt: Timestamp.now()\n    })\n    \n    // Create reward if evidence accepted\n    if (response.status === 'accepted' && response.evidenceUrl) {\n      await this.createTokenReward(match)\n    }\n  }\n\n  /**\n   * Get evidence requests for user\n   */\n  static async getRequestsForUser(\n    userId: string,\n    userRole: UserRole,\n    status?: EvidenceRequest['status']\n  ): Promise<EvidenceRequest[]> {\n    let q = query(\n      collection(db, PREMIUM_COLLECTIONS.evidenceRequests),\n      where('requesterId', '==', userId),\n      orderBy('createdAt', 'desc')\n    )\n    \n    if (status) {\n      q = query(q, where('status', '==', status))\n    }\n    \n    const snapshot = await getDocs(q)\n    return snapshot.docs.map(doc => ({\n      id: doc.id,\n      ...doc.data()\n    })) as EvidenceRequest[]\n  }\n\n  private static async notifyCameraOwners(\n    matches: EvidenceMatch[],\n    request: Omit<EvidenceRequest, 'id' | 'createdAt' | 'updatedAt' | 'matches'>\n  ): Promise<void> {\n    // In real implementation, send push notifications, emails, etc.\n    console.log(`Sending notifications to ${matches.length} camera owners for request ${request.incident.type}`)\n    \n    // Could integrate with notification service here\n    for (const match of matches) {\n      // Send notification to match.ownerId\n      await this.sendNotification(match.ownerId, {\n        type: 'evidence_request',\n        title: 'New Evidence Request',\n        message: `Evidence requested for ${request.incident.type} incident`,\n        data: {\n          matchId: match.id,\n          reward: match.estimatedReward,\n          urgency: request.incident.urgency\n        }\n      })\n    }\n  }\n\n  private static async sendNotification(userId: string, notification: any): Promise<void> {\n    // Mock notification service - integrate with Firebase Cloud Messaging, email service, etc.\n    console.log(`Notification sent to ${userId}:`, notification)\n  }\n\n  private static async createTokenReward(match: EvidenceMatch): Promise<void> {\n    const reward: Omit<TokenReward, 'id'> = {\n      recipientId: match.ownerId,\n      evidenceMatchId: match.id!,\n      requestId: match.requestId,\n      amount: match.estimatedReward,\n      rewardType: 'evidence_provided',\n      paymentStatus: 'pending',\n      paymentMethod: 'platform_credit',\n      platformCommission: match.estimatedReward * 0.15, // 15% commission\n      netAmount: match.estimatedReward * 0.85,\n      createdAt: Timestamp.now(),\n      updatedAt: Timestamp.now()\n    }\n    \n    await addDoc(collection(db, PREMIUM_COLLECTIONS.tokenRewards), reward)\n    \n    // Update user wallet\n    await WalletService.addEarnings(match.ownerId, reward.netAmount)\n  }\n}\n\n// =============================================================================\n// WALLET SERVICE\n// =============================================================================\n\nexport class WalletService {\n  /**\n   * Get or create user wallet\n   */\n  static async getUserWallet(userId: string): Promise<UserWallet> {\n    const walletDoc = await getDoc(doc(db, PREMIUM_COLLECTIONS.userWallets, userId))\n    \n    if (walletDoc.exists()) {\n      return walletDoc.data() as UserWallet\n    }\n    \n    // Create new wallet\n    const newWallet: UserWallet = {\n      userId,\n      balance: 0,\n      pendingEarnings: 0,\n      totalEarned: 0,\n      totalWithdrawn: 0,\n      paymentPreferences: {\n        method: 'platform_credit',\n        minimumWithdrawal: 25,\n        autoWithdraw: false\n      },\n      transactions: [],\n      updatedAt: Timestamp.now()\n    }\n    \n    await updateDoc(doc(db, PREMIUM_COLLECTIONS.userWallets, userId), newWallet)\n    return newWallet\n  }\n\n  /**\n   * Add earnings to user wallet\n   */\n  static async addEarnings(userId: string, amount: number): Promise<void> {\n    const wallet = await this.getUserWallet(userId)\n    \n    const transaction = {\n      id: `txn-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,\n      type: 'credit' as const,\n      amount,\n      description: 'Evidence reward received',\n      timestamp: Timestamp.now(),\n      status: 'completed' as const\n    }\n    \n    const updatedWallet = {\n      balance: wallet.balance + amount,\n      totalEarned: wallet.totalEarned + amount,\n      transactions: [...wallet.transactions, transaction],\n      updatedAt: Timestamp.now()\n    }\n    \n    await updateDoc(doc(db, PREMIUM_COLLECTIONS.userWallets, userId), updatedWallet)\n  }\n\n  /**\n   * Process withdrawal\n   */\n  static async processWithdrawal(\n    userId: string,\n    amount: number,\n    method: 'platform_credit' | 'bank_transfer' | 'paypal'\n  ): Promise<void> {\n    const wallet = await this.getUserWallet(userId)\n    \n    if (wallet.balance < amount) {\n      throw new Error('Insufficient balance')\n    }\n    \n    if (amount < wallet.paymentPreferences.minimumWithdrawal) {\n      throw new Error(`Minimum withdrawal is £${wallet.paymentPreferences.minimumWithdrawal}`)\n    }\n    \n    const transaction = {\n      id: `txn-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,\n      type: 'withdrawal' as const,\n      amount,\n      description: `Withdrawal via ${method}`,\n      timestamp: Timestamp.now(),\n      status: 'pending' as const\n    }\n    \n    const updatedWallet = {\n      balance: wallet.balance - amount,\n      totalWithdrawn: wallet.totalWithdrawn + amount,\n      transactions: [...wallet.transactions, transaction],\n      updatedAt: Timestamp.now()\n    }\n    \n    await updateDoc(doc(db, PREMIUM_COLLECTIONS.userWallets, userId), updatedWallet)\n    \n    // Process payment via external service\n    await this.processExternalPayment(userId, amount, method, transaction.id)\n  }\n\n  private static async processExternalPayment(\n    userId: string,\n    amount: number,\n    method: string,\n    transactionId: string\n  ): Promise<void> {\n    // Integrate with payment processors (Stripe, PayPal, etc.)\n    console.log(`Processing ${method} payment of £${amount} for user ${userId}, transaction ${transactionId}`)\n    \n    // For demo purposes, simulate successful payment\n    setTimeout(async () => {\n      const wallet = await this.getUserWallet(userId)\n      const updatedTransactions = wallet.transactions.map(txn => \n        txn.id === transactionId ? { ...txn, status: 'completed' as const } : txn\n      )\n      \n      await updateDoc(doc(db, PREMIUM_COLLECTIONS.userWallets, userId), {\n        transactions: updatedTransactions,\n        updatedAt: Timestamp.now()\n      })\n    }, 5000) // Simulate 5-second processing time\n  }\n}\n\n// =============================================================================\n// REAL-TIME LISTENERS\n// =============================================================================\n\nexport class RealtimeService {\n  /**\n   * Listen to evidence requests for camera owner\n   */\n  static listenToEvidenceRequests(\n    cameraOwnerId: string,\n    callback: (matches: EvidenceMatch[]) => void\n  ): () => void {\n    const q = query(\n      collection(db, PREMIUM_COLLECTIONS.evidenceMatches),\n      where('ownerId', '==', cameraOwnerId),\n      where('response', '==', null),\n      orderBy('createdAt', 'desc')\n    )\n    \n    return onSnapshot(q, (snapshot) => {\n      const matches = snapshot.docs.map(doc => ({\n        id: doc.id,\n        ...doc.data()\n      })) as EvidenceMatch[]\n      \n      callback(matches)\n    })\n  }\n\n  /**\n   * Listen to user wallet updates\n   */\n  static listenToWallet(\n    userId: string,\n    callback: (wallet: UserWallet) => void\n  ): () => void {\n    return onSnapshot(doc(db, PREMIUM_COLLECTIONS.userWallets, userId), (doc) => {\n      if (doc.exists()) {\n        callback(doc.data() as UserWallet)\n      }\n    })\n  }\n\n  /**\n   * Listen to evidence request updates\n   */\n  static listenToRequestUpdates(\n    requestId: string,\n    callback: (request: EvidenceRequest) => void\n  ): () => void {\n    return onSnapshot(doc(db, PREMIUM_COLLECTIONS.evidenceRequests, requestId), (doc) => {\n      if (doc.exists()) {\n        callback({ id: doc.id, ...doc.data() } as EvidenceRequest)\n      }\n    })\n  }\n}\n\nexport {\n  SubscriptionService,\n  IncidentReportingService,\n  EvidenceRequestService,\n  WalletService,\n  RealtimeService\n}\n
+import { 
+  collection, 
+  doc, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  getDocs, 
+  getDoc,
+  query, 
+  where, 
+  orderBy, 
+  limit,
+  Timestamp,
+  writeBatch,
+  onSnapshot
+} from 'firebase/firestore'
+import { db } from '@/lib/firebase'
+import type { 
+  UserSubscription, 
+  CommunityIncident, 
+  EvidenceRequest, 
+  EvidenceMatch, 
+  TokenReward, 
+  UserWallet, 
+  ChainOfCustody,
+  UserRole 
+} from '@/types/premium/subscription'
+import type { RegisteredCamera } from '@/types/camera'
+import { EvidenceMatchingEngine, type MatchingCriteria } from './evidence-matching'
+import { ChainOfCustodyManager } from './chain-of-custody'
+import { LocationPrivacyManager } from './privacy-manager'
+
+// =============================================================================
+// FIRESTORE COLLECTIONS
+// =============================================================================
+
+export const PREMIUM_COLLECTIONS = {
+  userSubscriptions: 'userSubscriptions',
+  communityIncidents: 'communityIncidents', 
+  evidenceRequests: 'evidenceRequests',
+  evidenceMatches: 'evidenceMatches',
+  tokenRewards: 'tokenRewards',
+  userWallets: 'userWallets',
+  chainOfCustody: 'chainOfCustody',
+  auditLogs: 'auditLogs',
+  anonymousUsers: 'anonymousUsers'
+} as const
+
+// =============================================================================
+// SUBSCRIPTION MANAGEMENT
+// =============================================================================
+
+export class SubscriptionService {
+  /**
+   * Create new user subscription
+   */
+  static async createSubscription(subscription: Omit<UserSubscription, 'createdAt' | 'updatedAt'>): Promise<string> {
+    const subscriptionData = {
+      ...subscription,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    }
+    
+    const docRef = await addDoc(collection(db, PREMIUM_COLLECTIONS.userSubscriptions), subscriptionData)
+    
+    // Update user profile with subscription info
+    await this.updateUserProfile(subscription.userId, {
+      role: subscription.role,
+      subscription: {
+        tier: subscription.tier.name,
+        status: subscription.status
+      }
+    })
+    
+    return docRef.id
+  }
+
+  /**
+   * Get user subscription
+   */
+  static async getUserSubscription(userId: string): Promise<UserSubscription | null> {
+    const q = query(
+      collection(db, PREMIUM_COLLECTIONS.userSubscriptions),
+      where('userId', '==', userId),
+      where('status', 'in', ['active', 'trial']),
+      limit(1)
+    )
+    
+    const snapshot = await getDocs(q)
+    if (snapshot.empty) return null
+    
+    const doc = snapshot.docs[0]
+    return { id: doc.id, ...doc.data() } as UserSubscription
+  }
+
+  /**
+   * Update subscription usage
+   */
+  static async updateUsage(userId: string, requestsUsed: number, amountSpent: number): Promise<void> {
+    const subscription = await this.getUserSubscription(userId)
+    if (!subscription) throw new Error('No active subscription found')
+    
+    const updatedUsage = {
+      monthlyRequests: subscription.usage.monthlyRequests + requestsUsed,
+      totalSpent: subscription.usage.totalSpent + amountSpent,
+      requestsRemaining: Math.max(0, subscription.usage.requestsRemaining - requestsUsed)
+    }
+    
+    await updateDoc(doc(db, PREMIUM_COLLECTIONS.userSubscriptions, subscription.id!), {
+      usage: updatedUsage,
+      updatedAt: Timestamp.now()
+    })
+  }
+
+  /**
+   * Check if user can make evidence request
+   */
+  static async canMakeRequest(userId: string): Promise<{
+    canRequest: boolean
+    reason?: string
+    requestsRemaining?: number
+  }> {
+    const subscription = await this.getUserSubscription(userId)
+    
+    if (!subscription) {
+      return { canRequest: false, reason: 'No active subscription' }
+    }
+    
+    if (subscription.status !== 'active' && subscription.status !== 'trial') {
+      return { canRequest: false, reason: 'Subscription not active' }
+    }
+    
+    if (subscription.usage.requestsRemaining <= 0) {
+      return { 
+        canRequest: false, 
+        reason: 'Monthly request limit reached',
+        requestsRemaining: 0
+      }
+    }
+    
+    return { 
+      canRequest: true, 
+      requestsRemaining: subscription.usage.requestsRemaining 
+    }
+  }
+
+  private static async updateUserProfile(userId: string, updates: any): Promise<void> {
+    // Update the existing user profile with subscription info
+    await updateDoc(doc(db, 'users', userId), {
+      ...updates,
+      lastUpdated: Timestamp.now()
+    })
+  }
+}
+
+// =============================================================================
+// INCIDENT REPORTING SERVICE
+// =============================================================================
+
+export class IncidentReportingService {
+  /**
+   * Create community incident with privacy protection
+   */
+  static async createCommunityIncident(
+    incident: Omit<CommunityIncident, 'id' | 'reportedAt' | 'updatedAt'>
+  ): Promise<string> {
+    // Apply location privacy if needed
+    const privacyManager = new LocationPrivacyManager()
+    let displayLocation = incident.displayLocation
+    
+    if (incident.privacy.anonymousReporting) {
+      const fuzzyLocation = privacyManager.createFuzzyLocation(incident.location)
+      displayLocation = fuzzyLocation.displayLocation
+    }
+    
+    const incidentData = {
+      ...incident,
+      displayLocation,
+      reportedAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    }
+    
+    const docRef = await addDoc(collection(db, PREMIUM_COLLECTIONS.communityIncidents), incidentData)
+    
+    // Log the incident creation
+    await this.logAuditEvent('incident_created', {
+      incidentId: docRef.id,
+      reporterId: incident.reporterId,
+      type: incident.type,
+      location: incident.displayLocation // Use display location for audit
+    })
+    
+    return docRef.id
+  }
+
+  /**
+   * Get incidents visible to user role
+   */
+  static async getIncidentsForRole(
+    userRole: UserRole,
+    location?: { lat: number; lng: number; radius: number }
+  ): Promise<CommunityIncident[]> {
+    let q = query(
+      collection(db, PREMIUM_COLLECTIONS.communityIncidents),
+      where('privacy.visibleTo', 'array-contains', userRole),
+      orderBy('reportedAt', 'desc'),
+      limit(50)
+    )
+    
+    const snapshot = await getDocs(q)
+    const incidents = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as CommunityIncident[]
+    
+    // Filter by location if specified
+    if (location) {
+      return incidents.filter(incident => {
+        const distance = this.calculateDistance(
+          incident.displayLocation,
+          { lat: location.lat, lng: location.lng }
+        )
+        return distance <= location.radius
+      })
+    }
+    
+    return incidents
+  }
+
+  private static calculateDistance(point1: { lat: number; lng: number }, point2: { lat: number; lng: number }): number {
+    const R = 6371000 // Earth's radius in meters
+    const lat1Rad = (point1.lat * Math.PI) / 180
+    const lat2Rad = (point2.lat * Math.PI) / 180
+    const deltaLatRad = ((point2.lat - point1.lat) * Math.PI) / 180
+    const deltaLngRad = ((point2.lng - point1.lng) * Math.PI) / 180
+
+    const a = Math.sin(deltaLatRad / 2) * Math.sin(deltaLatRad / 2) +
+              Math.cos(lat1Rad) * Math.cos(lat2Rad) *
+              Math.sin(deltaLngRad / 2) * Math.sin(deltaLngRad / 2)
+    
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    
+    return R * c
+  }
+
+  private static async logAuditEvent(eventType: string, details: any): Promise<void> {
+    await addDoc(collection(db, PREMIUM_COLLECTIONS.auditLogs), {
+      eventType,
+      details,
+      timestamp: Timestamp.now(),
+      id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    })
+  }
+}
+
+// =============================================================================
+// EVIDENCE REQUEST SERVICE
+// =============================================================================
+
+export class EvidenceRequestService {
+  /**
+   * Create evidence request and find matching sources
+   */
+  static async createEvidenceRequest(
+    request: Omit<EvidenceRequest, 'id' | 'createdAt' | 'updatedAt' | 'matches'>,
+    availableCameras: RegisteredCamera[]
+  ): Promise<{
+    requestId: string
+    matches: EvidenceMatch[]
+    estimatedCost: number
+  }> {
+    // Check if user can make request
+    const canRequest = await SubscriptionService.canMakeRequest(request.requesterId)
+    if (!canRequest.canRequest) {
+      throw new Error(canRequest.reason || 'Cannot make request')
+    }
+    
+    // Create matching criteria
+    const criteria: MatchingCriteria = {
+      incident: {
+        location: request.incident.location,
+        timeWindow: {
+          start: request.incident.timeWindow.start.toDate(),
+          end: request.incident.timeWindow.end.toDate()
+        },
+        radius: request.incident.radius,
+        type: request.incident.type,
+        urgency: request.incident.urgency
+      },
+      targeting: request.targeting,
+      budget: request.budget
+    }
+    
+    // Find matching evidence sources
+    const matchingEngine = new EvidenceMatchingEngine()
+    const matches = await matchingEngine.findPotentialSources(criteria, availableCameras)
+    
+    // Calculate estimated cost
+    const estimatedCost = matches.reduce((total, match) => total + match.estimatedReward, 0)
+    
+    // Create the evidence request
+    const requestData = {
+      ...request,
+      matches: [], // Will be populated separately
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    }
+    
+    const requestDocRef = await addDoc(collection(db, PREMIUM_COLLECTIONS.evidenceRequests), requestData)
+    const requestId = requestDocRef.id
+    
+    // Create evidence matches
+    const batch = writeBatch(db)
+    const matchIds: string[] = []
+    
+    for (const match of matches) {
+      const matchData = {
+        ...match,
+        requestId,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      }
+      
+      const matchDocRef = doc(collection(db, PREMIUM_COLLECTIONS.evidenceMatches))
+      batch.set(matchDocRef, matchData)
+      matchIds.push(matchDocRef.id)
+    }
+    
+    await batch.commit()
+    
+    // Update request with match IDs
+    await updateDoc(requestDocRef, {
+      'matches': matchIds
+    })
+    
+    // Send notifications to camera owners
+    await this.notifyCameraOwners(matches, request)
+    
+    return {
+      requestId,
+      matches,
+      estimatedCost
+    }
+  }
+
+  /**
+   * Respond to evidence request
+   */
+  static async respondToRequest(
+    matchId: string,
+    response: {
+      status: 'accepted' | 'rejected' | 'no_footage'
+      message?: string
+      evidenceUrl?: string
+      evidenceMetadata?: any
+    }
+  ): Promise<void> {
+    const matchDoc = await getDoc(doc(db, PREMIUM_COLLECTIONS.evidenceMatches, matchId))
+    if (!matchDoc.exists()) {
+      throw new Error('Evidence match not found')
+    }
+    
+    const match = matchDoc.data() as EvidenceMatch
+    
+    // Create chain of custody if evidence provided
+    let chainOfCustodyId: string | undefined
+    if (response.evidenceUrl && response.status === 'accepted') {
+      const custodyManager = new ChainOfCustodyManager()
+      const chainOfCustody = await custodyManager.createChainOfCustody(
+        `evidence-${matchId}`,
+        {
+          id: matchId,
+          originalName: `evidence-${Date.now()}`,
+          fileSize: response.evidenceMetadata?.fileSize || 0,
+          mimeType: response.evidenceMetadata?.mimeType || 'video/mp4',
+          uploadedBy: match.ownerId,
+          uploadedAt: new Date(),
+          metadata: response.evidenceMetadata || {}
+        },
+        match.requestId
+      )
+      
+      // Store chain of custody
+      const custodyDocRef = await addDoc(collection(db, PREMIUM_COLLECTIONS.chainOfCustody), chainOfCustody)
+      chainOfCustodyId = custodyDocRef.id
+    }
+    
+    // Update the match with response
+    await updateDoc(doc(db, PREMIUM_COLLECTIONS.evidenceMatches, matchId), {
+      response: {
+        ...response,
+        respondedAt: Timestamp.now()
+      },
+      chainOfCustody: chainOfCustodyId,
+      updatedAt: Timestamp.now()
+    })
+    
+    // Create reward if evidence accepted
+    if (response.status === 'accepted' && response.evidenceUrl) {
+      await this.createTokenReward(match)
+    }
+  }
+
+  /**
+   * Get evidence requests for user
+   */
+  static async getRequestsForUser(
+    userId: string,
+    userRole: UserRole,
+    status?: EvidenceRequest['status']
+  ): Promise<EvidenceRequest[]> {
+    let q = query(
+      collection(db, PREMIUM_COLLECTIONS.evidenceRequests),
+      where('requesterId', '==', userId),
+      orderBy('createdAt', 'desc')
+    )
+    
+    if (status) {
+      q = query(q, where('status', '==', status))
+    }
+    
+    const snapshot = await getDocs(q)
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as EvidenceRequest[]
+  }
+
+  private static async notifyCameraOwners(
+    matches: EvidenceMatch[],
+    request: Omit<EvidenceRequest, 'id' | 'createdAt' | 'updatedAt' | 'matches'>
+  ): Promise<void> {
+    // In real implementation, send push notifications, emails, etc.
+    console.log(`Sending notifications to ${matches.length} camera owners for request ${request.incident.type}`)
+    
+    // Could integrate with notification service here
+    for (const match of matches) {
+      // Send notification to match.ownerId
+      await this.sendNotification(match.ownerId, {
+        type: 'evidence_request',
+        title: 'New Evidence Request',
+        message: `Evidence requested for ${request.incident.type} incident`,
+        data: {
+          matchId: match.id,
+          reward: match.estimatedReward,
+          urgency: request.incident.urgency
+        }
+      })
+    }
+  }
+
+  private static async sendNotification(userId: string, notification: any): Promise<void> {
+    // Mock notification service - integrate with Firebase Cloud Messaging, email service, etc.
+    console.log(`Notification sent to ${userId}:`, notification)
+  }
+
+  private static async createTokenReward(match: EvidenceMatch): Promise<void> {
+    const reward: Omit<TokenReward, 'id'> = {
+      recipientId: match.ownerId,
+      evidenceMatchId: match.id!,
+      requestId: match.requestId,
+      amount: match.estimatedReward,
+      rewardType: 'evidence_provided',
+      paymentStatus: 'pending',
+      paymentMethod: 'platform_credit',
+      platformCommission: match.estimatedReward * 0.15, // 15% commission
+      netAmount: match.estimatedReward * 0.85,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    }
+    
+    await addDoc(collection(db, PREMIUM_COLLECTIONS.tokenRewards), reward)
+    
+    // Update user wallet
+    await WalletService.addEarnings(match.ownerId, reward.netAmount)
+  }
+}
+
+// =============================================================================
+// WALLET SERVICE
+// =============================================================================
+
+export class WalletService {
+  /**
+   * Get or create user wallet
+   */
+  static async getUserWallet(userId: string): Promise<UserWallet> {
+    const walletDoc = await getDoc(doc(db, PREMIUM_COLLECTIONS.userWallets, userId))
+    
+    if (walletDoc.exists()) {
+      return walletDoc.data() as UserWallet
+    }
+    
+    // Create new wallet
+    const newWallet: UserWallet = {
+      userId,
+      balance: 0,
+      pendingEarnings: 0,
+      totalEarned: 0,
+      totalWithdrawn: 0,
+      paymentPreferences: {
+        method: 'platform_credit',
+        minimumWithdrawal: 25,
+        autoWithdraw: false
+      },
+      transactions: [],
+      updatedAt: Timestamp.now()
+    }
+    
+    await updateDoc(doc(db, PREMIUM_COLLECTIONS.userWallets, userId), newWallet)
+    return newWallet
+  }
+
+  /**
+   * Add earnings to user wallet
+   */
+  static async addEarnings(userId: string, amount: number): Promise<void> {
+    const wallet = await this.getUserWallet(userId)
+    
+    const transaction = {
+      id: `txn-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      type: 'credit' as const,
+      amount,
+      description: 'Evidence reward received',
+      timestamp: Timestamp.now(),
+      status: 'completed' as const
+    }
+    
+    const updatedWallet = {
+      balance: wallet.balance + amount,
+      totalEarned: wallet.totalEarned + amount,
+      transactions: [...wallet.transactions, transaction],
+      updatedAt: Timestamp.now()
+    }
+    
+    await updateDoc(doc(db, PREMIUM_COLLECTIONS.userWallets, userId), updatedWallet)
+  }
+
+  /**
+   * Process withdrawal
+   */
+  static async processWithdrawal(
+    userId: string,
+    amount: number,
+    method: 'platform_credit' | 'bank_transfer' | 'paypal'
+  ): Promise<void> {
+    const wallet = await this.getUserWallet(userId)
+    
+    if (wallet.balance < amount) {
+      throw new Error('Insufficient balance')
+    }
+    
+    if (amount < wallet.paymentPreferences.minimumWithdrawal) {
+      throw new Error(`Minimum withdrawal is £${wallet.paymentPreferences.minimumWithdrawal}`)
+    }
+    
+    const transaction = {
+      id: `txn-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      type: 'withdrawal' as const,
+      amount,
+      description: `Withdrawal via ${method}`,
+      timestamp: Timestamp.now(),
+      status: 'pending' as const
+    }
+    
+    const updatedWallet = {
+      balance: wallet.balance - amount,
+      totalWithdrawn: wallet.totalWithdrawn + amount,
+      transactions: [...wallet.transactions, transaction],
+      updatedAt: Timestamp.now()
+    }
+    
+    await updateDoc(doc(db, PREMIUM_COLLECTIONS.userWallets, userId), updatedWallet)
+    
+    // Process payment via external service
+    await this.processExternalPayment(userId, amount, method, transaction.id)
+  }
+
+  private static async processExternalPayment(
+    userId: string,
+    amount: number,
+    method: string,
+    transactionId: string
+  ): Promise<void> {
+    // Integrate with payment processors (Stripe, PayPal, etc.)
+    console.log(`Processing ${method} payment of £${amount} for user ${userId}, transaction ${transactionId}`)
+    
+    // For demo purposes, simulate successful payment
+    setTimeout(async () => {
+      const wallet = await this.getUserWallet(userId)
+      const updatedTransactions = wallet.transactions.map(txn => 
+        txn.id === transactionId ? { ...txn, status: 'completed' as const } : txn
+      )
+      
+      await updateDoc(doc(db, PREMIUM_COLLECTIONS.userWallets, userId), {
+        transactions: updatedTransactions,
+        updatedAt: Timestamp.now()
+      })
+    }, 5000) // Simulate 5-second processing time
+  }
+}
+
+// =============================================================================
+// REAL-TIME LISTENERS
+// =============================================================================
+
+export class RealtimeService {
+  /**
+   * Listen to evidence requests for camera owner
+   */
+  static listenToEvidenceRequests(
+    cameraOwnerId: string,
+    callback: (matches: EvidenceMatch[]) => void
+  ): () => void {
+    const q = query(
+      collection(db, PREMIUM_COLLECTIONS.evidenceMatches),
+      where('ownerId', '==', cameraOwnerId),
+      where('response', '==', null),
+      orderBy('createdAt', 'desc')
+    )
+    
+    return onSnapshot(q, (snapshot) => {
+      const matches = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as EvidenceMatch[]
+      
+      callback(matches)
+    })
+  }
+
+  /**
+   * Listen to user wallet updates
+   */
+  static listenToWallet(
+    userId: string,
+    callback: (wallet: UserWallet) => void
+  ): () => void {
+    return onSnapshot(doc(db, PREMIUM_COLLECTIONS.userWallets, userId), (doc) => {
+      if (doc.exists()) {
+        callback(doc.data() as UserWallet)
+      }
+    })
+  }
+
+  /**
+   * Listen to evidence request updates
+   */
+  static listenToRequestUpdates(
+    requestId: string,
+    callback: (request: EvidenceRequest) => void
+  ): () => void {
+    return onSnapshot(doc(db, PREMIUM_COLLECTIONS.evidenceRequests, requestId), (doc) => {
+      if (doc.exists()) {
+        callback({ id: doc.id, ...doc.data() } as EvidenceRequest)
+      }
+    })
+  }
+}
+
+export {
+  SubscriptionService,
+  IncidentReportingService,
+  EvidenceRequestService,
+  WalletService,
+  RealtimeService
+}
