@@ -114,8 +114,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         address: geocodedAddress,
         verified: false,
         trustScore: 0,
-        createdAt: serverTimestamp(),
-        lastActiveAt: serverTimestamp(),
+        createdAt: serverTimestamp() as any,
+        lastActiveAt: serverTimestamp() as any,
         stats: {
           camerasRegistered: 0,
           requestsMade: 0,
@@ -137,7 +137,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const existingProfile = userSnap.data() as UserProfile
       const updatedProfile: UserProfile = {
         ...existingProfile,
-        lastActiveAt: serverTimestamp()
+        lastActiveAt: serverTimestamp() as any
       }
 
       try {
@@ -307,7 +307,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const userRef = doc(db, 'users', user.uid)
       const updateData = {
         ...data,
-        lastActiveAt: serverTimestamp()
+        lastActiveAt: serverTimestamp() as any
       }
       
       await setDoc(userRef, updateData, { merge: true })
