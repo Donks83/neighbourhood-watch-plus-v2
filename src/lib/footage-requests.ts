@@ -251,6 +251,10 @@ async function createNotificationsForRequest(
       const cameraCount = ownerCameras.length
       const cameraNames = ownerCameras.map(c => c.name).join(', ')
       
+      const incidentDateStr = request.incidentDate instanceof Date 
+        ? request.incidentDate.toLocaleDateString()
+        : request.incidentDate.toDate().toLocaleDateString()
+      
       const notification: RequestNotification = {
         id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         userId: ownerId,
@@ -258,7 +262,7 @@ async function createNotificationsForRequest(
         type: 'new-request',
         requestId: request.id,
         title: `New Footage Request (${request.priority} priority)`,
-        message: `${request.incidentType} incident on ${new Date(request.incidentDate).toLocaleDateString()}. ` +
+        message: `${request.incidentType} incident on ${incidentDateStr}. ` +
                  `${cameraCount} of your cameras (${cameraNames}) may have captured footage.`,
         actionUrl: `/requests/${request.id}`,
         read: false,
@@ -278,6 +282,10 @@ async function createNotificationsForRequest(
       const markerCount = ownerMarkers.length
       const deviceTypes = ownerMarkers.map(m => m.marker.deviceType).join(', ')
       
+      const incidentDateStr = request.incidentDate instanceof Date 
+        ? request.incidentDate.toLocaleDateString()
+        : request.incidentDate.toDate().toLocaleDateString()
+      
       const notification: RequestNotification = {
         id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         userId: ownerId,
@@ -285,7 +293,7 @@ async function createNotificationsForRequest(
         type: 'new-request',
         requestId: request.id,
         title: `Footage Match Found! (${request.priority} priority)`,
-        message: `${request.incidentType} incident on ${new Date(request.incidentDate).toLocaleDateString()}. ` +
+        message: `${request.incidentType} incident on ${incidentDateStr}. ` +
                  `Your ${markerCount} temporary marker(s) (${deviceTypes}) matched this incident. Someone needs your footage!`,
         actionUrl: `/requests/${request.id}`,
         read: false,
