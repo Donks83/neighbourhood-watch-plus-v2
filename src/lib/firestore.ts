@@ -608,10 +608,10 @@ const updateUserStats = async (userId: string, statUpdates: Partial<UserProfile[
       }
 
       const updatedStats = {
-        camerasRegistered: Math.max(0, (currentStats.camerasRegistered || 0) + (statUpdates.camerasRegistered || 0)),
-        requestsMade: Math.max(0, (currentStats.requestsMade || 0) + (statUpdates.requestsMade || 0)),
-        footageShared: Math.max(0, (currentStats.footageShared || 0) + (statUpdates.footageShared || 0)),
-        communityHelpScore: Math.max(0, (currentStats.communityHelpScore || 0) + (statUpdates.communityHelpScore || 0))
+        camerasRegistered: Math.max(0, (currentStats.camerasRegistered || 0) + (statUpdates?.camerasRegistered || 0)),
+        requestsMade: Math.max(0, (currentStats.requestsMade || 0) + (statUpdates?.requestsMade || 0)),
+        footageShared: Math.max(0, (currentStats.footageShared || 0) + (statUpdates?.footageShared || 0)),
+        communityHelpScore: Math.max(0, (currentStats.communityHelpScore || 0) + (statUpdates?.communityHelpScore || 0))
       }
 
       await updateDoc(userRef, {
