@@ -69,12 +69,9 @@ export default function RequestManagement({ isOpen, onClose }: RequestManagement
       // Convert Firestore timestamps to proper dates
       const processedReceived = received.map(request => ({
         ...request,
-        incidentDate: request.incidentDate instanceof Date ? request.incidentDate : 
-                     (request.incidentDate?.toDate ? request.incidentDate.toDate() : new Date(request.incidentDate)),
-        createdAt: request.createdAt instanceof Date ? request.createdAt :
-                  (request.createdAt?.toDate ? request.createdAt.toDate() : new Date(request.createdAt)),
-        expiresAt: request.expiresAt instanceof Date ? request.expiresAt :
-                  (request.expiresAt?.toDate ? request.expiresAt.toDate() : new Date(request.expiresAt))
+        incidentDate: request.incidentDate instanceof Date ? request.incidentDate : request.incidentDate.toDate(),
+        createdAt: request.createdAt instanceof Date ? request.createdAt : request.createdAt.toDate(),
+        expiresAt: request.expiresAt instanceof Date ? request.expiresAt : request.expiresAt.toDate()
       }))
       setReceivedRequests(processedReceived)
       
@@ -82,12 +79,9 @@ export default function RequestManagement({ isOpen, onClose }: RequestManagement
       const sent = await getRequestsByUser(user.uid)
       const processedSent = sent.map(request => ({
         ...request,
-        incidentDate: request.incidentDate instanceof Date ? request.incidentDate : 
-                     (request.incidentDate?.toDate ? request.incidentDate.toDate() : new Date(request.incidentDate)),
-        createdAt: request.createdAt instanceof Date ? request.createdAt :
-                  (request.createdAt?.toDate ? request.createdAt.toDate() : new Date(request.createdAt)),
-        expiresAt: request.expiresAt instanceof Date ? request.expiresAt :
-                  (request.expiresAt?.toDate ? request.expiresAt.toDate() : new Date(request.expiresAt))
+        incidentDate: request.incidentDate instanceof Date ? request.incidentDate : request.incidentDate.toDate(),
+        createdAt: request.createdAt instanceof Date ? request.createdAt : request.createdAt.toDate(),
+        expiresAt: request.expiresAt instanceof Date ? request.expiresAt : request.expiresAt.toDate()
       }))
       setSentRequests(processedSent)
       
