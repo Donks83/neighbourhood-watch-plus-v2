@@ -3,6 +3,7 @@ import {
   doc, 
   addDoc, 
   updateDoc, 
+  setDoc,
   deleteDoc, 
   getDocs, 
   getDoc,
@@ -507,7 +508,7 @@ export class WalletService {
       updatedAt: Timestamp.now()
     }
     
-    await updateDoc(doc(db, PREMIUM_COLLECTIONS.userWallets, userId), newWallet as any)
+    await setDoc(doc(db, PREMIUM_COLLECTIONS.userWallets, userId), newWallet)
     return newWallet
   }
 
@@ -533,7 +534,12 @@ export class WalletService {
       updatedAt: Timestamp.now()
     }
     
-    await updateDoc(doc(db, PREMIUM_COLLECTIONS.userWallets, userId), updatedWallet)
+    await updateDoc(doc(db, PREMIUM_COLLECTIONS.userWallets, userId), {
+      balance: wallet.balance + amount,
+      totalEarned: wallet.totalEarned + amount,
+      transactions: [...wallet.transactions, transaction],
+      updatedAt: Timestamp.now()
+    })
   }
 
   /**
@@ -570,7 +576,12 @@ export class WalletService {
       updatedAt: Timestamp.now()
     }
     
-    await updateDoc(doc(db, PREMIUM_COLLECTIONS.userWallets, userId), updatedWallet)
+    await updateDoc(doc(db, PREMIUM_COLLECTIONS.userWallets, userId), {
+      balance: wallet.balance - amount,
+      totalWithdrawn: wallet.totalWithdrawn + amount,
+      transactions: [...wallet.transactions, transaction],
+      updatedAt: Timestamp.now()
+    })
     
     // Process payment via external service
     await this.processExternalPayment(userId, amount, method, transaction.id)
