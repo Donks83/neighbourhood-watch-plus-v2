@@ -16,7 +16,7 @@ const incidentSchema = z.object({
   incidentType: z.enum(['vehicle_accident', 'theft', 'vandalism', 'suspicious_activity', 'other']),
   description: z.string().min(10, 'Description must be at least 10 characters'),
   incidentDateTime: z.string(),
-  requestRadius: z.number().min(5).max(30, 'Radius must be between 5m and 30m'),
+  requestRadius: z.number().min(30).max(100, 'Radius must be between 30m and 100m'),
 })
 
 const INCIDENT_TYPES = [
@@ -57,7 +57,7 @@ export default function IncidentReportPanel({
       incidentType: 'other',
       description: '',
       incidentDateTime: new Date(), // Use Date object
-      requestRadius: 15, // Default 15m for general users
+      requestRadius: 50, // Default 50m - good middle ground
     },
     mode: 'onChange'
   })
@@ -318,16 +318,16 @@ export default function IncidentReportPanel({
               <div className="px-3">
                 <input
                   type="range"
-                  min="5"
-                  max="30"
-                  step="1"
+                  min="30"
+                  max="100"
+                  step="5"
                   {...register('requestRadius', { valueAsNumber: true })}
                   className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
                 />
                 <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>5m</span>
-                  <span>17m</span>
                   <span>30m</span>
+                  <span>65m</span>
+                  <span>100m</span>
                 </div>
               </div>
               <p className="text-xs text-gray-500 mt-2">
