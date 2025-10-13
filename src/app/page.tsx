@@ -344,33 +344,103 @@ export default function HomePage() {
         className="absolute inset-0"
       />
 
-      {/* Footage Location Selection Overlay */}
+      {/* Footage Location Selection Panel - Slide in from right */}
       {isWaitingForFootageLocation && (
-        <div className="absolute inset-0 z-[999] bg-black/40 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-200">
-          {/* Instruction Banner */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border-2 border-blue-500 dark:border-blue-400 p-8 max-w-lg mx-4 animate-in zoom-in-95 duration-300">
-            <div className="text-center space-y-4">
-              {/* Icon */}
-              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto">
-                <CameraIcon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+        <>
+          {/* Backdrop overlay - subtle, doesn't block clicks */}
+          <div className="absolute inset-0 z-[998] bg-blue-500/5 pointer-events-none animate-in fade-in duration-200" />
+          
+          {/* Instruction Panel */}
+          <div className="absolute top-0 right-0 bottom-0 z-[1001] w-full sm:w-96 bg-white dark:bg-gray-900 shadow-2xl border-l-4 border-blue-500 animate-in slide-in-from-right duration-300">
+            <div className="flex flex-col h-full">
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center animate-pulse">
+                    <CameraIcon className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                      Select Location
+                    </h2>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Click on the map
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsWaitingForFootageLocation(false)}
+                  className="rounded-full"
+                >
+                  ✕
+                </Button>
               </div>
-              
-              {/* Title */}
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Select Footage Location
-              </h2>
-              
-              {/* Instructions */}
-              <p className="text-gray-600 dark:text-gray-300 text-lg leading-relaxed">
-                📍 <strong>Click anywhere on the map</strong> to mark where you recorded this footage
-              </p>
-              
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                This helps others find your footage when they report nearby incidents
-              </p>
-              
-              {/* Cancel Button */}
-              <div className="pt-4">
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {/* Main Instruction */}
+                <div className="bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-700 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                      <span className="text-white text-lg">📍</span>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                        Click anywhere on the map
+                      </h3>
+                      <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
+                        Mark the exact location where you recorded this footage. This helps others find your footage when they report nearby incidents.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* How it works */}
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                    <span className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-xs">ℹ️</span>
+                    How It Works
+                  </h3>
+                  <div className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
+                    <div className="flex items-start gap-2">
+                      <span className="text-blue-600 font-bold">1.</span>
+                      <p>Click the location on the map where you recorded footage</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-blue-600 font-bold">2.</span>
+                      <p>Fill in details about your footage (time, device, description)</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-blue-600 font-bold">3.</span>
+                      <p>Your footage will be available for 14 days</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-blue-600 font-bold">4.</span>
+                      <p>You'll be notified if someone needs your footage</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Privacy Note */}
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-start gap-2">
+                    <span className="text-lg">🔒</span>
+                    <div>
+                      <h4 className="font-medium text-gray-900 dark:text-white text-sm mb-1">
+                        Privacy Protected
+                      </h4>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                        Your exact address is never shown. Only you decide if and when to share footage.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
                 <Button
                   variant="outline"
                   size="lg"
@@ -379,15 +449,13 @@ export default function HomePage() {
                 >
                   Cancel
                 </Button>
+                <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-3">
+                  Press <kbd className="px-2 py-0.5 bg-white dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600 font-mono text-xs">ESC</kbd> to cancel
+                </p>
               </div>
-              
-              {/* Hint */}
-              <p className="text-xs text-gray-400 dark:text-gray-500">
-                Press <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 font-mono">ESC</kbd> to cancel
-              </p>
             </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* App Header */}
