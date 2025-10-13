@@ -350,9 +350,9 @@ export default function HomePage() {
           {/* Backdrop overlay - subtle, doesn't block clicks */}
           <div className="absolute inset-0 z-[998] bg-blue-500/5 pointer-events-none animate-in fade-in duration-200" />
           
-          {/* Instruction Panel */}
-          <div className="absolute top-0 right-0 bottom-0 z-[1001] w-full sm:w-96 bg-white dark:bg-gray-900 shadow-2xl border-l-4 border-blue-500 animate-in slide-in-from-right duration-300">
-            <div className="flex flex-col h-full">
+          {/* Instruction Panel - positioned but allows clicks through */}
+          <div className="absolute top-0 right-0 bottom-0 z-[1001] w-full sm:w-96 pointer-events-none animate-in slide-in-from-right duration-300">
+            <div className="h-full pointer-events-auto bg-white dark:bg-gray-900 shadow-2xl border-l-4 border-blue-500 flex flex-col">
               {/* Header */}
               <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
                 <div className="flex items-center gap-3">
