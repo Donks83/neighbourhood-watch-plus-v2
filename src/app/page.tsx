@@ -42,6 +42,7 @@ export default function HomePage() {
   const [isTemporaryMarkerFormOpen, setIsTemporaryMarkerFormOpen] = useState(false)
   const [temporaryMarkerLocation, setTemporaryMarkerLocation] = useState<Location | null>(null)
   const [isSubmittingTemporaryMarker, setIsSubmittingTemporaryMarker] = useState(false)
+  const [isWaitingForFootageLocation, setIsWaitingForFootageLocation] = useState(false)
   
   // Check for unread notifications
   React.useEffect(() => {
@@ -90,21 +91,17 @@ export default function HomePage() {
       return
     }
     
-    // Show choice modal
-    const choice = window.confirm(
-      'Click OK to report an incident (request footage from cameras)\n\n' +
-      'Click Cancel to register footage YOU captured (mobile/dashcam)'
-    )
-    
-    if (choice) {
-      // Report incident
-      setSelectedLocation(coords)
-      setIsReportFormOpen(true)
-    } else {
-      // Register temporary marker
+    // If waiting for footage location, open footage registration form directly
+    if (isWaitingForFootageLocation) {
       handleOpenTemporaryMarkerForm(coords)
+      setIsWaitingForFootageLocation(false)
+      return
     }
-  }, [user])
+    
+    // Otherwise, open incident report form
+    setSelectedLocation(coords)
+    setIsReportFormOpen(true)
+  }, [user, isWaitingForFootageLocation])
 
   // Handle incident report submission and create footage request
   const handleIncidentSubmit = async (data: IncidentFormData) => {
@@ -213,6 +210,7 @@ export default function HomePage() {
   const handleOpenTemporaryMarkerForm = (coords: Location) => {
     setTemporaryMarkerLocation(coords)
     setIsTemporaryMarkerFormOpen(true)
+    setIsWaitingForFootageLocation(false) // Clear waiting state
   }
 
   // Handle real-time radius updates from the incident form
@@ -303,6 +301,18 @@ export default function HomePage() {
     }
   }, [userLocation, loadCommunityHeatmapCameras])
 
+  // Handle ESC key to cancel footage location selection
+  React.useEffect(() => {
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isWaitingForFootageLocation) {
+        setIsWaitingForFootageLocation(false)
+      }
+    }
+
+    document.addEventListener('keydown', handleEscapeKey)
+    return () => document.removeEventListener('keydown', handleEscapeKey)
+  }, [isWaitingForFootageLocation])
+
   // Show loading state
   if (loading) {
     return (
@@ -333,6 +343,52 @@ export default function HomePage() {
         heatmapRegenerationKey={heatmapRegenerationKey} // Force heatmap regeneration
         className="absolute inset-0"
       />
+
+      {/* Footage Location Selection Overlay */}
+      {isWaitingForFootageLocation && (
+        <div className="absolute inset-0 z-[999] bg-black/40 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-200">
+          {/* Instruction Banner */}
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border-2 border-blue-500 dark:border-blue-400 p-8 max-w-lg mx-4 animate-in zoom-in-95 duration-300">
+            <div className="text-center space-y-4">
+              {/* Icon */}
+              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto">
+                <CameraIcon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+              </div>
+              
+              {/* Title */}
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Select Footage Location
+              </h2>
+              
+              {/* Instructions */}
+              <p className="text-gray-600 dark:text-gray-300 text-lg leading-relaxed">
+                📍 <strong>Click anywhere on the map</strong> to mark where you recorded this footage
+              </p>
+              
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                This helps others find your footage when they report nearby incidents
+              </p>
+              
+              {/* Cancel Button */}
+              <div className="pt-4">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setIsWaitingForFootageLocation(false)}
+                  className="w-full"
+                >
+                  Cancel
+                </Button>
+              </div>
+              
+              {/* Hint */}
+              <p className="text-xs text-gray-400 dark:text-gray-500">
+                Press <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 font-mono">ESC</kbd> to cancel
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* App Header */}
       <div className="absolute top-0 left-0 right-0 z-[1000] bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-b border-gray-200/50 dark:border-gray-700/50">
@@ -600,18 +656,21 @@ export default function HomePage() {
           size="lg"
           className={cn(
             "rounded-full shadow-lg hover:shadow-xl transition-all duration-200",
-            "bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 px-6 h-14"
+            "bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 px-6 h-14",
+            isWaitingForFootageLocation && "ring-4 ring-blue-300 animate-pulse"
           )}
           onClick={() => {
             if (!user) {
               setIsAuthDialogOpen(true)
             } else {
-              alert('Click anywhere on the map where you recorded the incident')
+              setIsWaitingForFootageLocation(true)
             }
           }}
         >
           <CameraIcon className="w-5 h-5" />
-          <span className="text-sm font-medium">I Have Footage</span>
+          <span className="text-sm font-medium">
+            {isWaitingForFootageLocation ? 'Click on Map...' : 'I Have Footage'}
+          </span>
         </Button>
 
         {/* Report Incident Button - Removed per user request */}
