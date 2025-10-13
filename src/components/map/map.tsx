@@ -14,6 +14,8 @@ interface MapProps {
   onMapClick?: (coords: Location, screenPosition?: { x: number; y: number }) => void
   selectedLocation?: Location | null
   selectedRadius?: number
+  temporaryMarkerLocation?: Location | null
+  temporaryMarkerRadius?: number
   markers?: MapMarker[]
   onMarkerClick?: (marker: MapMarker) => void
   showHeatmap?: boolean
@@ -42,6 +44,8 @@ const Map = forwardRef<MapRef, MapProps>(function Map({
   onMapClick,
   selectedLocation,
   selectedRadius = 200,
+  temporaryMarkerLocation,
+  temporaryMarkerRadius = 8,
   markers = [],
   onMarkerClick,
   showHeatmap = false,
@@ -372,6 +376,130 @@ const Map = forwardRef<MapRef, MapProps>(function Map({
       }
     }
   }, [selectedLocation, selectedRadius, isLoaded])
+
+  // Update temporary marker location (blue circle for footage)
+  useEffect(() => {
+    if (!map.current || !isLoaded) return
+
+    // Remove existing temporary marker layers safely
+    const temporaryLayers = [
+      'temporary-marker-pulse',
+      'temporary-marker-point',
+      'temporary-marker-circle-stroke',
+      'temporary-marker-circle'
+    ]
+    
+    const temporarySources = [
+      'temporary-marker-point',
+      'temporary-marker-circle'
+    ]
+    
+    // Remove layers first
+    temporaryLayers.forEach(layerId => {
+      try {
+        if (map.current!.getLayer(layerId)) {
+          map.current!.removeLayer(layerId)
+        }
+      } catch (e) {
+        // Layer doesn't exist, ignore
+      }
+    })
+    
+    // Then remove sources
+    temporarySources.forEach(sourceId => {
+      try {
+        if (map.current!.getSource(sourceId)) {
+          map.current!.removeSource(sourceId)
+        }
+      } catch (e) {
+        // Source doesn't exist, ignore
+      }
+    })
+
+    if (temporaryMarkerLocation) {
+      try {
+        // Add radius circle (blue for footage)
+        const circleGeoJSON = createCircleGeoJSON(temporaryMarkerLocation, temporaryMarkerRadius)
+        
+        map.current.addSource('temporary-marker-circle', {
+          type: 'geojson',
+          data: circleGeoJSON
+        })
+
+        map.current.addLayer({
+          id: 'temporary-marker-circle',
+          type: 'fill',
+          source: 'temporary-marker-circle',
+          paint: {
+            'fill-color': '#3b82f6',
+            'fill-opacity': 0.15
+          }
+        })
+
+        map.current.addLayer({
+          id: 'temporary-marker-circle-stroke',
+          type: 'line',
+          source: 'temporary-marker-circle',
+          paint: {
+            'line-color': '#3b82f6',
+            'line-width': 2,
+            'line-dasharray': [3, 3]
+          }
+        })
+
+        // Add center point marker (blue)
+        map.current.addSource('temporary-marker-point', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            geometry: {
+              type: 'Point',
+              coordinates: [temporaryMarkerLocation.lng, temporaryMarkerLocation.lat]
+            },
+            properties: {}
+          }
+        })
+
+        map.current.addLayer({
+          id: 'temporary-marker-point',
+          type: 'circle',
+          source: 'temporary-marker-point',
+          paint: {
+            'circle-radius': 8,
+            'circle-color': '#3b82f6',
+            'circle-stroke-color': '#ffffff',
+            'circle-stroke-width': 2
+          }
+        })
+
+        // Add pulsing animation
+        map.current.addLayer({
+          id: 'temporary-marker-pulse',
+          type: 'circle',
+          source: 'temporary-marker-point',
+          paint: {
+            'circle-radius': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              12, ['*', 15, ['sin', ['*', ['get', 'time', ['literal', ['get', 'timestamp']]], 0.01]]],
+              16, ['*', 30, ['sin', ['*', ['get', 'time', ['literal', ['get', 'timestamp']]], 0.01]]]
+            ],
+            'circle-color': '#3b82f6',
+            'circle-opacity': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              12, ['*', 0.3, ['abs', ['sin', ['*', ['get', 'time', ['literal', ['get', 'timestamp']]], 0.01]]]],
+              16, ['*', 0.2, ['abs', ['sin', ['*', ['get', 'time', ['literal', ['get', 'timestamp']]], 0.01]]]]
+            ]
+          }
+        })
+      } catch (temporaryMarkerError) {
+        console.warn('⚠️ Error updating temporary marker (non-critical):', temporaryMarkerError)
+      }
+    }
+  }, [temporaryMarkerLocation, temporaryMarkerRadius, isLoaded, createCircleGeoJSON])
 
   // Update markers with better error handling
   useEffect(() => {

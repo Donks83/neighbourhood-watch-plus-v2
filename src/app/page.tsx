@@ -332,6 +332,8 @@ export default function HomePage() {
         onMapClick={handleMapClick}
         selectedLocation={selectedLocation}
         selectedRadius={selectedRadius}
+        temporaryMarkerLocation={temporaryMarkerLocation}
+        temporaryMarkerRadius={8}
         markers={markers}
         onMarkerClick={handleMarkerClick}
         showHeatmap={showHeatmap}
