@@ -16,7 +16,7 @@ const incidentSchema = z.object({
   incidentType: z.enum(['vehicle_accident', 'theft', 'vandalism', 'suspicious_activity', 'other']),
   description: z.string().min(10, 'Description must be at least 10 characters'),
   incidentDateTime: z.string(),
-  requestRadius: z.number().min(50).max(500, 'Radius must be between 50m and 500m'),
+  requestRadius: z.number().min(5).max(30, 'Radius must be between 5m and 30m'),
 })
 
 const INCIDENT_TYPES = [
@@ -57,7 +57,7 @@ export default function IncidentReportPanel({
       incidentType: 'other',
       description: '',
       incidentDateTime: new Date(), // Use Date object
-      requestRadius: parseInt(process.env.NEXT_PUBLIC_DEFAULT_REQUEST_RADIUS || '200'),
+      requestRadius: 15, // Default 15m for general users
     },
     mode: 'onChange'
   })
@@ -318,20 +318,23 @@ export default function IncidentReportPanel({
               <div className="px-3">
                 <input
                   type="range"
-                  min="50"
-                  max="500"
-                  step="25"
+                  min="5"
+                  max="30"
+                  step="1"
                   {...register('requestRadius', { valueAsNumber: true })}
                   className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
                 />
                 <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>50m</span>
-                  <span>250m</span>
-                  <span>500m</span>
+                  <span>5m</span>
+                  <span>17m</span>
+                  <span>30m</span>
                 </div>
               </div>
               <p className="text-xs text-gray-500 mt-2">
                 Camera owners within this radius will be notified. <strong>Watch the red circle on the map update as you drag!</strong>
+              </p>
+              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 font-medium">
+                ℹ️ Premium users (companies, police) can request up to 500m radius
               </p>
               {errors.requestRadius && (
                 <p className="text-red-500 text-sm mt-1">{errors.requestRadius.message}</p>

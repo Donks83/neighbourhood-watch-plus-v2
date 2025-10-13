@@ -19,7 +19,7 @@ import type { RegisteredCamera } from '@/types/camera'
 
 export default function HomePage() {
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null)
-  const [selectedRadius, setSelectedRadius] = useState(200)
+  const [selectedRadius, setSelectedRadius] = useState(15) // Default 15m for general users
   const [isReportFormOpen, setIsReportFormOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [markers, setMarkers] = useState<MapMarker[]>([])
@@ -221,7 +221,7 @@ export default function HomePage() {
   const handleReportFormClose = () => {
     setIsReportFormOpen(false)
     setSelectedLocation(null)
-    setSelectedRadius(parseInt(process.env.NEXT_PUBLIC_DEFAULT_REQUEST_RADIUS || '200'))
+    setSelectedRadius(15) // Reset to default 15m for general users
   }
 
   // Load community cameras for heatmap
