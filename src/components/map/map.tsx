@@ -499,7 +499,7 @@ const Map = forwardRef<MapRef, MapProps>(function Map({
         console.warn('⚠️ Error updating temporary marker (non-critical):', temporaryMarkerError)
       }
     }
-  }, [temporaryMarkerLocation, temporaryMarkerRadius, isLoaded, createCircleGeoJSON])
+  }, [temporaryMarkerLocation, temporaryMarkerRadius, isLoaded])
 
   // Update markers with better error handling
   useEffect(() => {
