@@ -101,7 +101,6 @@ export default function HomePage() {
     // If waiting for footage location, open footage registration form directly
     if (isWaitingForFootageLocation) {
       handleOpenTemporaryMarkerForm(coords)
-      setIsWaitingForFootageLocation(false)
       return
     }
     

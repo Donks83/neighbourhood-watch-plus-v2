@@ -57,6 +57,7 @@ const Map = forwardRef<MapRef, MapProps>(function Map({
   const mapContainer = useRef<HTMLDivElement>(null)
   const map = useRef<maplibregl.Map | null>(null)
   const prevCameraData = useRef<string>('')
+  const onMapClickRef = useRef(onMapClick) // Store latest callback
   const [isLoaded, setIsLoaded] = useState(false)
   const [userLocation, setUserLocation] = useState<Location | null>(null)
   const [locationError, setLocationError] = useState<string | null>(null)
@@ -86,6 +87,11 @@ const Map = forwardRef<MapRef, MapProps>(function Map({
       }
     }
   }), [])
+
+  // Keep onMapClick ref up to date
+  useEffect(() => {
+    onMapClickRef.current = onMapClick
+  }, [onMapClick])
 
   // Get user's current location or use provided initial center
   useEffect(() => {
@@ -156,15 +162,15 @@ const Map = forwardRef<MapRef, MapProps>(function Map({
         // Only log to console for debugging
       })
 
-      // Handle map click for pin dropping - using stable reference
+      // Handle map click for pin dropping - using ref to always call latest callback
       const handleClick = (e: any) => {
-        if (onMapClick) {
+        if (onMapClickRef.current) {
           // Get screen coordinates of the click
           const screenPosition = {
             x: e.point.x + mapContainer.current!.getBoundingClientRect().left,
             y: e.point.y + mapContainer.current!.getBoundingClientRect().top
           }
-          onMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng }, screenPosition)
+          onMapClickRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng }, screenPosition)
         }
       }
       
