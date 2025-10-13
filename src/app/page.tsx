@@ -83,6 +83,13 @@ export default function HomePage() {
     }
   }, [])
 
+  // Handle opening temporary marker form
+  const handleOpenTemporaryMarkerForm = useCallback((coords: Location) => {
+    setTemporaryMarkerLocation(coords)
+    setIsTemporaryMarkerFormOpen(true)
+    setIsWaitingForFootageLocation(false) // Clear waiting state
+  }, [])
+
   // Handle map clicks for incident reporting OR temporary markers
   const handleMapClick = useCallback((coords: Location, screenPosition?: { x: number; y: number }) => {
     if (!user) {
@@ -101,7 +108,7 @@ export default function HomePage() {
     // Otherwise, open incident report form
     setSelectedLocation(coords)
     setIsReportFormOpen(true)
-  }, [user, isWaitingForFootageLocation])
+  }, [user, isWaitingForFootageLocation, handleOpenTemporaryMarkerForm])
 
   // Handle incident report submission and create footage request
   const handleIncidentSubmit = async (data: IncidentFormData) => {
@@ -204,13 +211,6 @@ export default function HomePage() {
     } finally {
       setIsSubmittingTemporaryMarker(false)
     }
-  }
-
-  // Handle opening temporary marker form
-  const handleOpenTemporaryMarkerForm = (coords: Location) => {
-    setTemporaryMarkerLocation(coords)
-    setIsTemporaryMarkerFormOpen(true)
-    setIsWaitingForFootageLocation(false) // Clear waiting state
   }
 
   // Handle real-time radius updates from the incident form
