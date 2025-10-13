@@ -614,27 +614,7 @@ export default function HomePage() {
           <span className="text-sm font-medium">I Have Footage</span>
         </Button>
 
-        {/* Report Incident Button */}
-        <Button
-          size="lg"
-          className={cn(
-            "w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-all duration-200",
-            "bg-red-600 hover:bg-red-700 text-white",
-            "relative overflow-hidden"
-          )}
-          onClick={() => {
-            if (!user) {
-              setIsAuthDialogOpen(true)
-            } else {
-              // User can click on map next to report incident
-            }
-          }}
-        >
-          <AlertCircleIcon className="w-6 h-6" />
-          
-          {/* Pulse animation ring */}
-          <div className="absolute inset-0 rounded-full bg-red-600/30 animate-ping scale-110" />
-        </Button>
+        {/* Report Incident Button - Removed per user request */}
       </div>
 
       {/* Instructions Banner */}
@@ -650,11 +630,11 @@ export default function HomePage() {
                   Report Incident
                 </h3>
                 <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                  {user ? (
-                    <>Click the red <strong>emergency button</strong> below, then click anywhere on the map to report an incident and request footage from nearby cameras.</>
-                  ) : (
-                    <>Sign in to report incidents and request footage. The red button will guide you through reporting after signing in.</>
-                  )}
+                {user ? (
+                <>Click anywhere on the map to report an incident and request footage from nearby cameras. The form will slide in from the right.</>  
+                ) : (
+                <>Sign in to report incidents and request footage. Click anywhere on the map after signing in to get started.</>  
+                )}
                 </p>
               </div>
             </div>

@@ -914,14 +914,7 @@ const Map = forwardRef<MapRef, MapProps>(function Map({
         style={{ minHeight: '400px' }}
       />
 
-      {/* Map instructions overlay */}
-      {onMapClick && !criticalError && (
-        <div className="absolute bottom-4 left-4 z-[1000] bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-sm border">
-          <div className="text-xs text-gray-600 dark:text-gray-400">
-            📍 Click anywhere on the map to report an incident • Form slides in from right
-          </div>
-        </div>
-      )}
+      {/* Map instructions overlay - Removed per user request */}
     </div>
   )
 })
