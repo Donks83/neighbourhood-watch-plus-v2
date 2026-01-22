@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
   Shield, 
   ArrowLeft,
@@ -21,10 +22,20 @@ import {
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { collection, getDocs, query, limit } from 'firebase/firestore'
+import { collection, getDocs, query, limit, doc, updateDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { getArchiveStatistics } from '@/lib/archive-service'
 import { getRateLimitStatus, setCustomRateLimit, resetRateLimit } from '@/lib/rate-limiting'
+
+// Available user roles
+const USER_ROLES = [
+  { value: 'user', label: 'User', description: 'Regular community member' },
+  { value: 'police', label: 'Police', description: 'Law enforcement - sees hex grid' },
+  { value: 'insurance', label: 'Insurance', description: 'Insurance company - sees hex grid' },
+  { value: 'security', label: 'Security', description: 'Security firm - sees hex grid' },
+  { value: 'admin', label: 'Admin', description: 'Platform administrator' },
+  { value: 'super_admin', label: 'Super Admin', description: 'Full system access' },
+]
 
 export default function AdminPage() {
   const { user, isAdmin } = useAuth()
@@ -83,8 +94,7 @@ export default function AdminPage() {
     }
 
     checkAdminAccess()
-  }, [user])
-  
+  }, [user])  
   // Load admin statistics
   useEffect(() => {
     async function loadStatistics() {
@@ -375,13 +385,13 @@ export default function AdminPage() {
             </Card>
           </TabsContent>
 
-          {/* User Management Tab */}
+          {/* User Management Tab WITH ROLE ASSIGNMENT */}
           <TabsContent value="users" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>User Management</CardTitle>
                 <CardDescription>
-                  Manage user accounts and rate limits
+                  Manage user roles and rate limits
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -389,7 +399,7 @@ export default function AdminPage() {
                   {users.slice(0, 20).map((userData) => (
                     <div 
                       key={userData.id}
-                      className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                      className="relative flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
                     >
                       <div className="flex-1">
                         <div className="font-medium">{userData.displayName || 'Unknown User'}</div>
@@ -399,7 +409,7 @@ export default function AdminPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant={userData.role === 'admin' ? 'default' : 'secondary'}>
+                        <Badge variant={userData.role === 'police' || userData.role === 'insurance' || userData.role === 'security' ? 'default' : 'secondary'}>
                           {userData.role || 'user'}
                         </Badge>
                         <Button
@@ -412,13 +422,63 @@ export default function AdminPage() {
                         </Button>
                       </div>
                       
-                      {/* Rate Limit Controls (expanded) */}
+                      {/* User Management Controls (expanded) - WITH ROLE DROPDOWN */}
                       {selectedUser === userData.id && (
-                        <div className="absolute right-4 mt-2 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4 z-10">
-                          <h4 className="font-medium mb-3">Rate Limit Controls</h4>
-                          <div className="space-y-3">
+                        <div className="absolute right-4 mt-2 w-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4 z-10">
+                          <h4 className="font-medium mb-4">User Management</h4>
+                          
+                          {/* ROLE ASSIGNMENT SECTION */}
+                          <div className="space-y-3 mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
                             <div>
-                              <label className="text-sm text-gray-600 mb-1 block">
+                              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
+                                User Role
+                              </label>
+                              <Select
+                                value={userData.role || 'user'}
+                                onValueChange={async (newRole) => {
+                                  try {
+                                    const userRef = doc(db, 'users', userData.id)
+                                    await updateDoc(userRef, { role: newRole })
+                                    
+                                    alert(`✅ Role updated to "${newRole}"`)
+                                    
+                                    // Reload users
+                                    const usersSnapshot = await getDocs(collection(db, 'users'))
+                                    setUsers(usersSnapshot.docs.map(doc => ({
+                                      id: doc.id,
+                                      ...doc.data()
+                                    })))
+                                  } catch (error) {
+                                    console.error('Error updating role:', error)
+                                    alert('❌ Failed to update role')
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {USER_ROLES.map((role) => (
+                                    <SelectItem key={role.value} value={role.value}>
+                                      <div className="flex flex-col items-start py-1">
+                                        <span className="font-medium">{role.label}</span>
+                                        <span className="text-xs text-gray-500">{role.description}</span>
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <p className="text-xs text-gray-500 mt-1.5">
+                                🔒 Police, Insurance, Security roles can see hexagonal coverage grid
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {/* RATE LIMIT CONTROLS SECTION */}
+                          <div className="space-y-3">
+                            <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300">Rate Limit Controls</h5>
+                            <div>
+                              <label className="text-sm text-gray-600 dark:text-gray-400 mb-1 block">
                                 Weekly Request Limit
                               </label>
                               <div className="flex gap-2">
