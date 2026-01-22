@@ -469,9 +469,9 @@ export default function IncidentReportPanel({
             </Button>
             <Button 
               onClick={handleSubmit(handleFormSubmit)}
-              disabled={!isValid || isSubmitting || (rateLimitStatus && !rateLimitStatus.allowed)}
+              disabled={!isValid || isSubmitting || (rateLimitStatus?.allowed === false)}
               className="flex-1 bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
-              title={rateLimitStatus && !rateLimitStatus.allowed ? rateLimitStatus.message : undefined}
+              title={rateLimitStatus?.allowed === false ? rateLimitStatus.message : undefined}
             >
               {isSubmitting 
                 ? 'Submitting...' 
