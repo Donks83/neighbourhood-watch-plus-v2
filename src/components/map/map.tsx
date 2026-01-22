@@ -9,6 +9,7 @@ import type { Location, MapMarker } from '@/types'
 import type { CameraDensityArea, HeatmapPoint } from '@/lib/heatmap-utils'
 import type { CameraPlacementData, RegisteredCamera } from '@/types/camera'
 import { generateHeatmapPoints, generateSampleDensityAreas, createDensityAreasFromCameras, createHeatmapPointsFromCameras } from '@/lib/heatmap-utils'
+import { generateHexagonalGrid, hexagonsToGeoJSON, type HexagonData } from '@/lib/hexagon-grid'
 
 interface MapProps {
   onMapClick?: (coords: Location, screenPosition?: { x: number; y: number }) => void
@@ -67,6 +68,7 @@ const Map = forwardRef<MapRef, MapProps>(function Map({
   const [locationError, setLocationError] = useState<string | null>(null)
   const [densityAreas, setDensityAreas] = useState<CameraDensityArea[]>([])
   const [heatmapPoints, setHeatmapPoints] = useState<HeatmapPoint[]>([])
+  const [hexagons, setHexagons] = useState<HexagonData[]>([])
   const [mapError, setMapError] = useState<string | null>(null)
   const [criticalError, setCriticalError] = useState<string | null>(null)
 
@@ -241,6 +243,15 @@ const Map = forwardRef<MapRef, MapProps>(function Map({
           }))
       
       setHeatmapPoints(updatedHeatmapPoints)
+      
+      // Generate hexagonal grid from camera data
+      if (registeredCameras.length > 0 && userLocation) {
+        const updatedHexagons = generateHexagonalGrid(registeredCameras, userLocation, 5)
+        setHexagons(updatedHexagons)
+        console.log(`🔶 Hexagons generated: ${updatedHexagons.length} hexagonal cells`)
+      } else {
+        setHexagons([])
+      }
       
       // Notify parent component
       if (onDensityAreasChange) {
@@ -649,108 +660,65 @@ const Map = forwardRef<MapRef, MapProps>(function Map({
     }
   }, [markers, isLoaded, onMarkerClick])
 
-  // Update heatmap layers - SECURITY: Only show density areas, no individual points
+  // Update hexagonal grid layers - REPLACES heatmap with discrete hexagonal cells
   useEffect(() => {
-    if (!map.current || !isLoaded || heatmapPoints.length === 0) return
+    if (!map.current || !isLoaded || hexagons.length === 0) return
 
     try {
-      // Remove existing heatmap layers
-      if (map.current.getLayer('heatmap')) {
-        map.current.removeLayer('heatmap')
+      // Remove existing hexagon layers
+      if (map.current.getLayer('hexagon-grid-fill')) {
+        map.current.removeLayer('hexagon-grid-fill')
       }
-      if (map.current.getLayer('heatmap-points')) {
-        map.current.removeLayer('heatmap-points')
+      if (map.current.getLayer('hexagon-grid-stroke')) {
+        map.current.removeLayer('hexagon-grid-stroke')
       }
-      if (map.current.getSource('heatmap-source')) {
-        map.current.removeSource('heatmap-source')
-      }
-
-      // Add heatmap source
-      const heatmapGeoJSON = {
-        type: 'FeatureCollection' as const,
-        features: heatmapPoints.map((point, index) => ({
-          type: 'Feature' as const,
-          geometry: {
-            type: 'Point' as const,
-            coordinates: [point.location.lng, point.location.lat]
-          },
-          properties: {
-            weight: point.weight,
-            id: `heatmap-point-${index}`
-          }
-        }))
+      if (map.current.getSource('hexagon-grid-source')) {
+        map.current.removeSource('hexagon-grid-source')
       }
 
-      map.current.addSource('heatmap-source', {
+      // Convert hexagons to GeoJSON
+      const hexagonGeoJSON = hexagonsToGeoJSON(hexagons)
+
+      // Add hexagon source
+      map.current.addSource('hexagon-grid-source', {
         type: 'geojson',
-        data: heatmapGeoJSON
+        data: hexagonGeoJSON
       })
 
-      // Add heatmap layer - ONLY density visualization for security
+      // Add hexagon fill layer
       map.current.addLayer({
-        id: 'heatmap',
-        type: 'heatmap',
-        source: 'heatmap-source',
+        id: 'hexagon-grid-fill',
+        type: 'fill',
+        source: 'hexagon-grid-source',
         layout: {
           visibility: showHeatmap ? 'visible' : 'none'
         },
         paint: {
-          // Increase the heatmap weight based on frequency and property weight
-          'heatmap-weight': [
-            'interpolate',
-            ['linear'],
-            ['get', 'weight'],
-            0, 0,
-            1, 1
-          ],
-          // Reduce intensity at low zoom levels - more intense at street level
-          'heatmap-intensity': [
-            'interpolate',
-            ['linear'],
-            ['zoom'],
-            0, 0.3,   // Very low intensity at world view
-            8, 0.8,   // Low intensity at city level
-            12, 1.5,  // Medium intensity at neighborhood level  
-            16, 3,    // Good intensity at street level
-            20, 5     // Full intensity at building level
-          ],
-          // Massive color spread - red almost eliminated (top 1%)
-          'heatmap-color': [
-            'interpolate',
-            ['linear'],
-            ['heatmap-density'],
-            0, 'rgba(0,100,255,0)',      // Transparent blue at zero density
-            0.2, 'rgb(0,150,255)',       // Blue - low coverage (extended)
-            0.45, 'rgb(0,255,150)',      // Green - medium coverage (extended)
-            0.75, 'rgb(255,255,0)',      // Yellow - good coverage (extended)
-            0.9, 'rgb(255,200,0)',       // Light orange - high coverage
-            0.97, 'rgb(255,150,0)',      // Orange - very high coverage
-            0.99, 'rgb(255,80,0)',       // Red-orange - extreme coverage
-            1, 'rgb(200,0,0)'            // Deep red - only top 1% maximum coverage
-          ],
-          // Scale heatmap radius - much larger when zoomed in close
-          'heatmap-radius': [
-            'interpolate',
-            ['linear'],
-            ['zoom'],
-            0, 0.5,   // Extremely small at world view (barely visible)
-            8, 1,     // Very small at city level  
-            12, 4,    // Small at neighborhood level
-            16, 25,   // Good size at street level (increased)
-            18, 50,   // Large at close street level (increased)
-            20, 100   // Very large at building level (increased)
-          ],
-          // 50% transparent as requested
-          'heatmap-opacity': 0.5
+          'fill-color': ['get', 'color'], // Use pre-calculated color from hexagon data
+          'fill-opacity': 0.6
         }
       })
 
-      // SECURITY: Individual heatmap points layer removed entirely
-      // This prevents showing exact camera locations even at high zoom levels
-    } catch (heatmapError) {
-      console.warn('⚠️ Error updating heatmap (non-critical):', heatmapError)
+      // Add hexagon stroke layer for clear boundaries
+      map.current.addLayer({
+        id: 'hexagon-grid-stroke',
+        type: 'line',
+        source: 'hexagon-grid-source',
+        layout: {
+          visibility: showHeatmap ? 'visible' : 'none'
+        },
+        paint: {
+          'line-color': '#ffffff',
+          'line-width': 1,
+          'line-opacity': 0.3
+        }
+      })
+
+      console.log(`✅ Hexagonal grid rendered: ${hexagons.length} hexagons`)
+    } catch (hexagonError) {
+      console.warn('⚠️ Error rendering hexagonal grid (non-critical):', hexagonError)
     }
-  }, [heatmapPoints, isLoaded, showHeatmap])
+  }, [hexagons, isLoaded, showHeatmap])
 
   // Update camera markers with simple circular coverage
   useEffect(() => {
