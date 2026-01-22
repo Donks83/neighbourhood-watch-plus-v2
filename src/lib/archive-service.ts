@@ -179,7 +179,10 @@ export async function getArchiveStatistics(): Promise<{
   try {
     const snapshot = await getDocs(collection(db, 'archivedRequests'))
     
-    const stats = {
+    const stats: {
+      total: number
+      byReason: Record<string, number>
+    } = {
       total: snapshot.size,
       byReason: {
         fulfilled: 0,
@@ -191,7 +194,7 @@ export async function getArchiveStatistics(): Promise<{
     
     snapshot.forEach(doc => {
       const data = doc.data()
-      const reason = data.archivedReason || 'manual'
+      const reason = (data.archivedReason || 'manual') as string
       stats.byReason[reason] = (stats.byReason[reason] || 0) + 1
     })
     
