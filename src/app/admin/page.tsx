@@ -6,14 +6,25 @@ import AdminVerificationQueue from '@/components/admin/admin-verification-queue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Input } from '@/components/ui/input'
 import { 
   Shield, 
   ArrowLeft,
-  AlertCircle
+  AlertCircle,
+  Users,
+  BarChart3,
+  Archive,
+  FileText,
+  Settings
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { collection, getDocs, query, limit } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
+import { getArchiveStatistics } from '@/lib/archive-service'
+import { getRateLimitStatus, setCustomRateLimit, resetRateLimit } from '@/lib/rate-limiting'
 
 export default function AdminPage() {
   const { user, isAdmin } = useAuth()
@@ -21,6 +32,20 @@ export default function AdminPage() {
   const [hasAdminAccess, setHasAdminAccess] = useState<boolean | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [userRole, setUserRole] = useState<string | null>(null)
+  
+  // Admin statistics state
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalRequests: 0,
+    totalCameras: 0,
+    archivedRequests: 0,
+    archiveBreakdown: { fulfilled: 0, expired: 0, cancelled: 0, manual: 0 }
+  })
+  
+  // User management state
+  const [users, setUsers] = useState<any[]>([])
+  const [selectedUser, setSelectedUser] = useState<string | null>(null)
+  const [newRateLimit, setNewRateLimit] = useState<number>(3)
 
   // Check admin permissions on page load
   useEffect(() => {
@@ -53,6 +78,48 @@ export default function AdminPage() {
 
     checkAdminAccess()
   }, [user])
+  
+  // Load admin statistics
+  useEffect(() => {
+    async function loadStatistics() {
+      if (!hasAdminAccess) return
+      
+      try {
+        // Get total users
+        const usersSnapshot = await getDocs(collection(db, 'users'))
+        const usersData = usersSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+        setUsers(usersData)
+        
+        // Get total requests
+        const requestsSnapshot = await getDocs(collection(db, 'footageRequests'))
+        
+        // Get total cameras
+        const camerasSnapshot = await getDocs(collection(db, 'cameras'))
+        
+        // Get archive statistics
+        const archiveStats = await getArchiveStatistics()
+        
+        setStats({
+          totalUsers: usersSnapshot.size,
+          totalRequests: requestsSnapshot.size,
+          totalCameras: camerasSnapshot.size,
+          archivedRequests: archiveStats.total,
+          archiveBreakdown: archiveStats.byReason
+        })
+        
+        console.log('📊 Admin stats loaded:', stats)
+      } catch (error) {
+        console.error('Error loading admin statistics:', error)
+      }
+    }
+    
+    if (hasAdminAccess) {
+      loadStatistics()
+    }
+  }, [hasAdminAccess])
 
   // Show loading state
   if (isLoading) {
@@ -177,14 +244,260 @@ export default function AdminPage() {
           <Alert>
             <Shield className="h-4 w-4" />
             <AlertDescription>
-              <strong>Welcome to the Admin Dashboard!</strong> You can review camera verifications, manage users, and monitor community activity. 
-              Camera verifications help ensure only legitimate security cameras are registered in the community.
+              <strong>Welcome to the Admin Dashboard!</strong> Manage users, monitor system statistics, review camera verifications, and maintain community safety.
             </AlertDescription>
           </Alert>
         </div>
 
-        {/* Main Verification Queue */}
-        <AdminVerificationQueue />
+        {/* Admin Tabs */}
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="overview">
+              <BarChart3 className="w-4 h-4 mr-2" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="users">
+              <Users className="w-4 h-4 mr-2" />
+              User Management
+            </TabsTrigger>
+            <TabsTrigger value="verification">
+              <Shield className="w-4 h-4 mr-2" />
+              Camera Verification
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Total Users Card */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600">
+                    Total Users
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">{stats.totalUsers}</div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Registered community members
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Total Requests Card */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600">
+                    Active Requests
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">{stats.totalRequests}</div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Current footage requests
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Total Cameras Card */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600">
+                    Total Cameras
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">{stats.totalCameras}</div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Registered security cameras
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Archived Requests Card */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600">
+                    Archived Requests
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">{stats.archivedRequests}</div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Old requests cleaned up
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Archive Breakdown */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Archive Breakdown</CardTitle>
+                <CardDescription>
+                  How archived requests were categorized
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">
+                      {stats.archiveBreakdown.fulfilled}
+                    </div>
+                    <div className="text-sm text-gray-600">Fulfilled</div>
+                  </div>
+                  <div className="text-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                    <div className="text-2xl font-bold text-red-600">
+                      {stats.archiveBreakdown.expired}
+                    </div>
+                    <div className="text-sm text-gray-600">Expired</div>
+                  </div>
+                  <div className="text-center p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                    <div className="text-2xl font-bold text-yellow-600">
+                      {stats.archiveBreakdown.cancelled}
+                    </div>
+                    <div className="text-sm text-gray-600">Cancelled</div>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="text-2xl font-bold text-gray-600">
+                      {stats.archiveBreakdown.manual}
+                    </div>
+                    <div className="text-sm text-gray-600">Manual</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* User Management Tab */}
+          <TabsContent value="users" className="space-y-6">
+      </div>
+    </div>
+  )
+}            <Card>
+              <CardHeader>
+                <CardTitle>User Management</CardTitle>
+                <CardDescription>
+                  Manage user accounts and rate limits
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {users.slice(0, 20).map((userData) => (
+                    <div 
+                      key={userData.id}
+                      className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                    >
+                      <div className="flex-1">
+                        <div className="font-medium">{userData.displayName || 'Unknown User'}</div>
+                        <div className="text-sm text-gray-500">{userData.email}</div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          Rate Limit: {userData.rateLimits?.weeklyRequestCount || 0}/{userData.rateLimits?.weeklyLimit || 3} requests/week
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={userData.role === 'admin' ? 'default' : 'secondary'}>
+                          {userData.role || 'user'}
+                        </Badge>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setSelectedUser(selectedUser === userData.id ? null : userData.id)}
+                        >
+                          <Settings className="w-3 h-3 mr-1" />
+                          Manage
+                        </Button>
+                      </div>
+                      
+                      {/* Rate Limit Controls (expanded) */}
+                      {selectedUser === userData.id && (
+                        <div className="absolute right-4 mt-2 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4 z-10">
+                          <h4 className="font-medium mb-3">Rate Limit Controls</h4>
+                          <div className="space-y-3">
+                            <div>
+                              <label className="text-sm text-gray-600 mb-1 block">
+                                Weekly Request Limit
+                              </label>
+                              <div className="flex gap-2">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  max="999"
+                                  value={newRateLimit}
+                                  onChange={(e) => setNewRateLimit(parseInt(e.target.value))}
+                                  className="flex-1"
+                                />
+                                <Button
+                                  size="sm"
+                                  onClick={async () => {
+                                    try {
+                                      await setCustomRateLimit(userData.id, newRateLimit)
+                                      alert(`✅ Rate limit updated to ${newRateLimit} requests/week`)
+                                      // Reload users
+                                      const usersSnapshot = await getDocs(collection(db, 'users'))
+                                      setUsers(usersSnapshot.docs.map(doc => ({
+                                        id: doc.id,
+                                        ...doc.data()
+                                      })))
+                                    } catch (error) {
+                                      console.error('Error updating rate limit:', error)
+                                      alert('Failed to update rate limit')
+                                    }
+                                  }}
+                                >
+                                  Set
+                                </Button>
+                              </div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full"
+                              onClick={async () => {
+                                try {
+                                  await resetRateLimit(userData.id)
+                                  alert('✅ Rate limit reset successfully')
+                                  // Reload users
+                                  const usersSnapshot = await getDocs(collection(db, 'users'))
+                                  setUsers(usersSnapshot.docs.map(doc => ({
+                                    id: doc.id,
+                                    ...doc.data()
+                                  })))
+                                } catch (error) {
+                                  console.error('Error resetting rate limit:', error)
+                                  alert('Failed to reset rate limit')
+                                }
+                              }}
+                            >
+                              Reset Counter to 0
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {users.length > 20 && (
+                    <div className="text-center text-sm text-gray-500 pt-4">
+                      Showing first 20 of {users.length} users
+                    </div>
+                  )}
+                  
+                  {users.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      No users found
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Verification Tab */}
+          <TabsContent value="verification">
+            <AdminVerificationQueue />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   )

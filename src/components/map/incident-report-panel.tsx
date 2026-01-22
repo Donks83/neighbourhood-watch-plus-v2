@@ -1,16 +1,18 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { CalendarIcon, MapPinIcon, AlertTriangleIcon, XIcon } from 'lucide-react'
+import { CalendarIcon, MapPinIcon, AlertTriangleIcon, XIcon, ShieldAlertIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import type { Location, IncidentFormData } from '@/types'
 import { formatCoordinates, cn } from '@/lib/utils'
+import { checkRateLimit, incrementRequestCount, type RateLimitStatus } from '@/lib/rate-limiting'
+import { useAuth } from '@/contexts/auth-context'
 
 const incidentSchema = z.object({
   incidentType: z.enum(['vehicle_accident', 'theft', 'vandalism', 'suspicious_activity', 'other']),
@@ -44,6 +46,10 @@ export default function IncidentReportPanel({
   onRadiusChange,
   isSubmitting = false
 }: IncidentReportPanelProps) {
+  const { user } = useAuth()
+  const [rateLimitStatus, setRateLimitStatus] = useState<RateLimitStatus | null>(null)
+  const [isCheckingLimit, setIsCheckingLimit] = useState(false)
+  
   const {
     register,
     handleSubmit,
@@ -63,6 +69,29 @@ export default function IncidentReportPanel({
   })
 
   const selectedRadius = watch('requestRadius')
+  
+  // Check rate limit when panel opens
+  useEffect(() => {
+    async function loadRateLimit() {
+      if (!user || !isOpen) {
+        setRateLimitStatus(null)
+        return
+      }
+      
+      setIsCheckingLimit(true)
+      try {
+        const status = await checkRateLimit(user.uid)
+        setRateLimitStatus(status)
+        console.log('📊 Rate limit status:', status)
+      } catch (error) {
+        console.error('Error checking rate limit:', error)
+      } finally {
+        setIsCheckingLimit(false)
+      }
+    }
+    
+    loadRateLimit()
+  }, [user, isOpen])
 
   // Update map radius in real-time as user drags slider
   React.useEffect(() => {
@@ -72,16 +101,38 @@ export default function IncidentReportPanel({
   }, [selectedRadius, onRadiusChange])
 
   const handleFormSubmit = async (data: IncidentFormData) => {
+    if (!user) return
+    
     try {
+      // Check rate limit before submission
+      const limitCheck = await checkRateLimit(user.uid)
+      
+      if (!limitCheck.allowed) {
+        alert(limitCheck.message || 'Weekly request limit reached. Please try again after the reset date.')
+        return
+      }
+      
+      // Submit the request
       await onSubmit({
         ...data,
         incidentDateTime: new Date(data.incidentDateTime),
         requestRadius: Number(data.requestRadius)
       } as IncidentFormData)
+      
+      // Increment rate limit counter after successful submission
+      await incrementRequestCount(user.uid)
+      
+      // Update local rate limit status
+      const newStatus = await checkRateLimit(user.uid)
+      setRateLimitStatus(newStatus)
+      
+      console.log('✅ Request submitted and rate limit updated')
+      
       reset()
       onClose()
     } catch (error) {
       console.error('Error submitting incident report:', error)
+      alert('Failed to submit request. Please try again.')
     }
   }
 
@@ -120,6 +171,55 @@ export default function IncidentReportPanel({
             <XIcon className="w-4 h-4" />
           </Button>
         </div>
+
+        {/* Rate Limit Indicator */}
+        {rateLimitStatus && (
+          <div className={cn(
+            'px-4 py-3 border-b border-gray-200 dark:border-gray-700',
+            rateLimitStatus.remaining === 0 
+              ? 'bg-red-50 dark:bg-red-950' 
+              : rateLimitStatus.remaining === 1 
+              ? 'bg-yellow-50 dark:bg-yellow-950'
+              : 'bg-blue-50 dark:bg-blue-950'
+          )}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldAlertIcon className={cn(
+                  'w-4 h-4',
+                  rateLimitStatus.remaining === 0 
+                    ? 'text-red-600 dark:text-red-400' 
+                    : rateLimitStatus.remaining === 1
+                    ? 'text-yellow-600 dark:text-yellow-400'
+                    : 'text-blue-600 dark:text-blue-400'
+                )} />
+                <span className={cn(
+                  'text-sm font-medium',
+                  rateLimitStatus.remaining === 0 
+                    ? 'text-red-900 dark:text-red-100' 
+                    : rateLimitStatus.remaining === 1
+                    ? 'text-yellow-900 dark:text-yellow-100'
+                    : 'text-blue-900 dark:text-blue-100'
+                )}>
+                  {rateLimitStatus.remaining === 0 
+                    ? 'Weekly limit reached' 
+                    : `${rateLimitStatus.remaining} request${rateLimitStatus.remaining === 1 ? '' : 's'} remaining`
+                  }
+                </span>
+              </div>
+              <span className={cn(
+                'text-xs',
+                rateLimitStatus.remaining === 0 
+                  ? 'text-red-700 dark:text-red-300' 
+                  : 'text-gray-600 dark:text-gray-400'
+              )}>
+                {rateLimitStatus.remaining === 0 
+                  ? `Resets ${rateLimitStatus.resetDate.toLocaleDateString()}`
+                  : `${rateLimitStatus.limit}/week`
+                }
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Panel Content - Scrollable */}
         <div className="flex-1 overflow-y-auto p-4 pb-20">
@@ -369,10 +469,16 @@ export default function IncidentReportPanel({
             </Button>
             <Button 
               onClick={handleSubmit(handleFormSubmit)}
-              disabled={!isValid || isSubmitting}
-              className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+              disabled={!isValid || isSubmitting || (rateLimitStatus && !rateLimitStatus.allowed)}
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
+              title={rateLimitStatus && !rateLimitStatus.allowed ? rateLimitStatus.message : undefined}
             >
-              {isSubmitting ? 'Submitting...' : 'Request Footage'}
+              {isSubmitting 
+                ? 'Submitting...' 
+                : rateLimitStatus && !rateLimitStatus.allowed 
+                ? 'Limit Reached' 
+                : 'Request Footage'
+              }
             </Button>
           </div>
         </div>

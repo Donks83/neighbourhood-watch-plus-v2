@@ -14,7 +14,10 @@ import {
   ChevronDown,
   ChevronUp,
   Upload,
-  Eye
+  Eye,
+  Archive,
+  RotateCcw,
+  Trash2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -33,6 +36,12 @@ import {
   getUserNotifications,
   cancelFootageRequest
 } from '@/lib/footage-requests'
+import {
+  getUserArchivedRequests,
+  restoreRequest,
+  autoArchiveOldRequests,
+  type ArchivedRequest
+} from '@/lib/archive-service'
 import type { FootageRequest, RequestNotification, CameraResponse } from '@/types/requests'
 import type { RegisteredCamera } from '@/types/camera'
 
@@ -43,11 +52,13 @@ interface RequestManagementProps {
 
 export default function RequestManagement({ isOpen, onClose }: RequestManagementProps) {
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received')
+  const [activeTab, setActiveTab] = useState<'received' | 'sent' | 'archived'>('received')
   const [receivedRequests, setReceivedRequests] = useState<FootageRequest[]>([])
   const [sentRequests, setSentRequests] = useState<FootageRequest[]>([])
+  const [archivedRequests, setArchivedRequests] = useState<ArchivedRequest[]>([])
   const [notifications, setNotifications] = useState<RequestNotification[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isRunningCleanup, setIsRunningCleanup] = useState(false)
   const [expandedRequest, setExpandedRequest] = useState<string | null>(null)
   const [responseReasons, setResponseReasons] = useState<Record<string, string>>({})
   const [respondingTo, setRespondingTo] = useState<string | null>(null)
@@ -88,6 +99,10 @@ export default function RequestManagement({ isOpen, onClose }: RequestManagement
       // Load notifications
       const notifs = await getUserNotifications(user.uid)
       setNotifications(notifs)
+      
+      // Load archived requests
+      const archived = await getUserArchivedRequests(user.uid)
+      setArchivedRequests(archived)
       
       // Mark notifications as read
       const unreadNotifs = notifs.filter(n => !n.read)
@@ -282,6 +297,20 @@ export default function RequestManagement({ isOpen, onClose }: RequestManagement
               )}
             >
               Sent ({sentRequests.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('archived')}
+              className={cn(
+                "flex-1 px-6 py-3 text-sm font-medium transition-colors",
+                activeTab === 'archived'
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-500 hover:text-gray-700"
+              )}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <Archive className="w-4 h-4" />
+                Archived ({archivedRequests.length})
+              </div>
             </button>
           </div>
         </div>
@@ -590,6 +619,111 @@ export default function RequestManagement({ isOpen, onClose }: RequestManagement
                                 {cancellingRequest === request.id ? 'Cancelling...' : 'Cancel Request'}
                               </Button>
                             )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* Archived Requests Tab */}
+              {activeTab === 'archived' && (
+                <div className="space-y-4">
+                  {/* Archive Controls */}
+                  <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-1">
+                          Archive Management
+                        </h4>
+                        <p className="text-xs text-blue-700 dark:text-blue-300">
+                          Archived requests are old requests that have been automatically cleaned up. 
+                          You can restore them if needed.
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          setIsRunningCleanup(true)
+                          try {
+                            const result = await autoArchiveOldRequests()
+                            await loadData() // Reload to show newly archived
+                            alert(`✅ Cleanup complete! Archived ${result.archived} requests:\n${result.details.fulfilled} fulfilled, ${result.details.expired} expired, ${result.details.cancelled} cancelled`)
+                          } catch (error) {
+                            console.error('Error running cleanup:', error)
+                            alert('Failed to run cleanup. Please try again.')
+                          } finally {
+                            setIsRunningCleanup(false)
+                          }
+                        }}
+                        disabled={isRunningCleanup}
+                        className="whitespace-nowrap"
+                      >
+                        {isRunningCleanup ? (
+                          <div className="w-3 h-3 border border-blue-600 border-t-transparent rounded-full animate-spin mr-1" />
+                        ) : (
+                          <Archive className="w-3 h-3 mr-1" />
+                        )}
+                        {isRunningCleanup ? 'Running...' : 'Run Cleanup'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Archived Requests List */}
+                  {archivedRequests.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Archive className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                      <h3 className="font-medium text-gray-900 dark:text-white mb-2">
+                        No archived requests
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        Old requests will be automatically archived after 30 days.
+                      </p>
+                    </div>
+                  ) : (
+                    archivedRequests.map((request) => (
+                      <Card key={request.id} className="border-gray-300 dark:border-gray-600">
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Archive className="w-4 h-4 text-gray-500" />
+                                <CardTitle className="text-base text-gray-700 dark:text-gray-300">
+                                  {request.incidentType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                </CardTitle>
+                                <Badge variant="outline" className="text-xs">
+                                  {request.archivedReason}
+                                </Badge>
+                              </div>
+                              <CardDescription className="text-xs">
+                                Incident: {formatDate(request.incidentDate)} • 
+                                Archived: {formatRelativeTime(request.archivedAt)}
+                              </CardDescription>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={async () => {
+                                try {
+                                  await restoreRequest(request.id)
+                                  await loadData()
+                                  alert('✅ Request restored successfully')
+                                } catch (error) {
+                                  console.error('Error restoring request:', error)
+                                  alert('Failed to restore request. Please try again.')
+                                }
+                              }}
+                              className="flex-1"
+                            >
+                              <RotateCcw className="w-3 h-3 mr-1" />
+                              Restore
+                            </Button>
                           </div>
                         </CardContent>
                       </Card>

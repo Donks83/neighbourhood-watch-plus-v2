@@ -9,7 +9,8 @@
 
 - **Phase 1: Hexagonal Grid System** ✅ COMPLETE (Already implemented locally!)
 - **Phase 2: Security Improvements** ✅ COMPLETE (Already implemented locally!)
-- **Phase 3: Git Push & Deploy** ⏳ IN PROGRESS
+- **Phase 3: Admin & Archive System** ✅ COMPLETE (Just finished!)
+- **Phase 4: Git Push & Deploy** ⏳ READY TO START
 
 ---
 
@@ -92,7 +93,155 @@ Hide individual camera markers from public view, show only hexagonal density gri
 
 ---
 
-## 📋 **PHASE 3: GIT COMMIT & DEPLOY**
+## 📋 **PHASE 3: ADMIN & ARCHIVE SYSTEM** ⏳ IN PROGRESS
+
+### **Step 3.1: Rate Limiting Service - Basic Structure** ✅ COMPLETE
+- [x] Created `src/lib/rate-limiting.ts` (210 lines)
+- [x] Basic functions: checkRateLimit, incrementRequestCount, getRateLimitStatus
+- [x] Admin functions: setCustomRateLimit, resetRateLimit
+- [x] Default: 3 requests/week, resets every Monday
+- [x] Automatic weekly reset logic
+- [x] Timestamp conversion handling
+
+**Files Created:**
+- `src/lib/rate-limiting.ts` - Complete rate limiting service
+
+### **Step 3.2: Rate Limiting Service - Integration** ✅ COMPLETE
+- [x] Imported rate limiting functions into incident-report-panel.tsx
+- [x] Added useAuth hook to get current user
+- [x] Added state for tracking rate limit status
+- [x] Check rate limit when panel opens (useEffect)
+- [x] Check rate limit before submission (prevents submit if limit exceeded)
+- [x] Increment counter after successful request
+- [x] Added UI indicator showing remaining requests with color coding:
+  - Blue: 2+ requests remaining
+  - Yellow: 1 request remaining  
+  - Red: 0 requests (limit reached)
+- [x] Disable submit button when limit reached
+- [x] Show reset date when limit exceeded
+- [x] Update local status after each submission
+
+**Files Modified:**
+- `src/components/map/incident-report-panel.tsx` - Complete rate limiting integration
+
+**User Experience:**
+- Users see remaining requests at top of panel
+- Button disabled when limit reached with "Limit Reached" text
+- Helpful tooltip on hover showing reset date
+- Real-time updates after each submission
+
+---
+
+### **Step 3.3: Archive Service - Basic Structure** ✅ COMPLETE
+- [x] Created `src/lib/archive-service.ts` (331 lines)
+- [x] Archive function: Move requests to archivedRequests collection
+- [x] Restore function: Move archived requests back to active
+- [x] Query functions: Get user's archived requests
+- [x] Bulk archive: Archive multiple requests at once
+- [x] Statistics: Get archive counts by reason
+- [x] Auto-archive: Automatic archiving based on rules:
+  - Fulfilled requests after 30 days
+  - Expired requests immediately
+  - Cancelled requests after 7 days
+- [x] Helper function: Check if request should be archived
+- [x] Permanent delete: Remove archived requests completely
+
+**Files Created:**
+- `src/lib/archive-service.ts` - Complete archive management service
+
+**Archive Rules:**
+1. ✅ Fulfilled requests → Archive after 30 days
+2. ✅ Expired requests → Archive immediately
+3. ✅ Cancelled requests → Archive after 7 days
+4. ✅ Manual archive → Admin can manually archive any request
+
+**Functions Available:**
+- `archiveRequest(id, reason)` - Archive single request
+- `restoreRequest(id)` - Restore from archive
+- `getUserArchivedRequests(userId)` - Get user's archives
+- `bulkArchiveRequests(ids, reason)` - Archive multiple
+- `getArchiveStatistics()` - Get archive stats
+- `autoArchiveOldRequests()` - Run automatic cleanup
+- `shouldArchive(request)` - Check if should archive
+- `permanentlyDeleteArchived(id)` - Permanent deletion
+
+---
+
+### **Step 3.4: Archive Service - Automation & UI** ✅ COMPLETE
+- [x] Added archived requests loading to loadData function
+- [x] Created "Archived" tab button with count and icon
+- [x] Built complete archived requests UI with:
+  - Archive controls section with cleanup button
+  - Manual "Run Cleanup" button to trigger auto-archiving
+  - Empty state for no archived requests
+  - Archived request cards showing:
+    - Incident type and archive reason badge
+    - Incident date and archived date
+    - Restore button to bring back from archive
+- [x] Integrated restore functionality
+- [x] Auto-reload after restore or cleanup
+
+**Files Modified:**
+- `src/components/requests/request-management.tsx` - Complete archive UI integration
+
+**User Experience:**
+- Users can view all archived requests in dedicated "Archived" tab
+- "Run Cleanup" button manually triggers automatic archiving
+- One-click restore functionality
+- Shows why each request was archived (fulfilled/expired/cancelled)
+- Relative timestamps ("2 weeks ago")
+
+---
+
+### **Step 3.5: Admin Enhancements** ✅ COMPLETE
+- [x] Added admin statistics dashboard with:
+  - Total users count
+  - Active requests count
+  - Total cameras count
+  - Archived requests count
+  - Archive breakdown by reason (fulfilled/expired/cancelled/manual)
+- [x] Created user management interface with:
+  - List all users with email, name, role
+  - Display current rate limit status per user
+  - Rate limit adjustment controls
+  - Set custom weekly limit for any user
+  - Reset counter to 0 button
+- [x] Implemented tabbed interface:
+  - Overview tab: System statistics
+  - User Management tab: User controls
+  - Verification tab: Existing camera verification queue
+- [x] Real-time statistics loading on admin page load
+- [x] User list with first 20 users displayed
+
+**Files Modified:**
+- `src/app/admin/page.tsx` - Complete admin enhancement with tabs, stats, user management
+
+**Admin Features:**
+- **Overview Dashboard:** Quick glance at system health
+- **User Management:** Adjust rate limits, view user activity
+- **Statistics:** Total users, requests, cameras, archives
+- **Archive Breakdown:** Visual stats of how requests were archived
+
+---
+
+## 📋 **PHASE 3: ADMIN & ARCHIVE SYSTEM** ✅ COMPLETE
+
+**All Steps Completed:**
+- ✅ Step 3.1: Rate Limiting Service (backend)
+- ✅ Step 3.2: Rate Limiting Integration (UI)
+- ✅ Step 3.3: Archive Service (backend)
+- ✅ Step 3.4: Archive UI Integration
+- ✅ Step 3.5: Admin Enhancements
+
+**Phase 3 Summary:**
+- Created comprehensive rate limiting system (3 requests/week default)
+- Built complete archive system for old requests
+- Enhanced admin dashboard with statistics and user management
+- All integrated into UI with proper controls and feedback
+
+---
+
+## 📋 **PHASE 4: GIT COMMIT & DEPLOY** ⏳ READY TO START
 
 ### **Tasks:**
 - [ ] Review all changes
