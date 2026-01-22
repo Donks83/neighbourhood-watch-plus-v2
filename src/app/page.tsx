@@ -23,9 +23,8 @@ export default function HomePage() {
   const [isReportFormOpen, setIsReportFormOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [markers, setMarkers] = useState<MapMarker[]>([])
-  const [showHeatmap, setShowHeatmap] = useState(false)
-  const [heatmapRegenerationKey, setHeatmapRegenerationKey] = useState(0)
   const [densityAreas, setDensityAreas] = useState<CameraDensityArea[]>([])
+  const [heatmapRegenerationKey, setHeatmapRegenerationKey] = useState(0)
   const [isCameraRegistrationOpen, setIsCameraRegistrationOpen] = useState(false)
   const [userLocation, setUserLocation] = useState<Location | null>(null)
   const [registeredCameras, setRegisteredCameras] = useState<RegisteredCamera[]>([])
@@ -37,6 +36,15 @@ export default function HomePage() {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [isRequestManagementOpen, setIsRequestManagementOpen] = useState(false)
   const [unreadNotifications, setUnreadNotifications] = useState(0)
+  
+  // Hexagonal grid visibility - ONLY for elevated privilege users
+  // Police, Insurance, Security firms can see density grid
+  // Regular community members NEVER see the grid (privacy protection)
+  const canViewHexGrid = React.useMemo(() => {
+    if (!user || !userProfile) return false
+    const role = userProfile.role || 'user'
+    return role === 'police' || role === 'insurance' || role === 'security' || role === 'admin' || role === 'super_admin'
+  }, [user, userProfile])
   
   // Temporary Evidence Marker state
   const [isTemporaryMarkerFormOpen, setIsTemporaryMarkerFormOpen] = useState(false)
@@ -336,12 +344,12 @@ export default function HomePage() {
         temporaryMarkerRadius={8}
         markers={markers}
         onMarkerClick={handleMarkerClick}
-        showHeatmap={showHeatmap}
-        showCameraMarkers={false} // SECURITY: Hide individual camera markers to prevent targeting
-        registeredCameras={communityHeatmapCameras} // Use community cameras for heatmap
+        showHeatmap={canViewHexGrid}  // Role-based: only police/insurance/security see hex grid
+        showCameraMarkers={false}      // SECURITY: Never show individual camera markers
+        registeredCameras={communityHeatmapCameras}
         onDensityAreasChange={handleDensityAreasChange}
-        initialCenter={userProfile?.address?.coordinates} // Use user's address if available, fallback to geolocation
-        heatmapRegenerationKey={heatmapRegenerationKey} // Force heatmap regeneration
+        initialCenter={userProfile?.address?.coordinates}
+        heatmapRegenerationKey={heatmapRegenerationKey}
         className="absolute inset-0"
       />
 
@@ -565,39 +573,6 @@ export default function HomePage() {
                 })()}
               </div>
             )}
-
-            {/* Coverage Map Toggle */}
-            <Button
-              variant={showHeatmap ? "default" : "outline"}
-              size="sm"
-              onClick={() => {
-                // Toggle heatmap visibility
-                setShowHeatmap(!showHeatmap)
-                
-                // Force heatmap regeneration with new random patterns
-                if (!showHeatmap || showHeatmap) {
-                  // Regenerate every time (both when turning on and off, and when already on)
-                  console.log('🔄 Forcing heatmap regeneration...')
-                  setHeatmapRegenerationKey(Date.now()) // Unique key to force regeneration
-                }
-              }}
-              className={cn(
-                "text-xs font-medium transition-all duration-200",
-                showHeatmap && "bg-blue-600 hover:bg-blue-700 text-white"
-              )}
-            >
-              {showHeatmap ? (
-                <>
-                  <div className="w-3 h-3 bg-gradient-to-r from-blue-400 to-red-500 rounded-full mr-2 animate-pulse" />
-                  Coverage On
-                </>
-              ) : (
-                <>
-                  <div className="w-3 h-3 bg-gray-400 rounded-full mr-2" />
-                  Coverage Map
-                </>
-              )}
-            </Button>
 
             {/* User Authentication Area */}
             {user ? (
