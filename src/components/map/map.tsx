@@ -882,8 +882,15 @@ const Map = forwardRef<MapRef, MapProps>(function Map({
         })
       }
 
-      // Add camera points
-      if (pointFeatures.length > 0) {
+      // Add camera points - SECURITY: Only show individual markers when NOT in community heatmap view
+      // This prevents exposing exact camera locations to the public
+      // Markers are shown when:
+      // 1. User is viewing their own cameras (showOwnerView = true)
+      // 2. User is reporting an incident (showHeatmap = false)
+      // Markers are hidden when viewing community coverage (showHeatmap = true)
+      const shouldShowIndividualMarkers = showOwnerView || !showHeatmap
+      
+      if (pointFeatures.length > 0 && shouldShowIndividualMarkers) {
         map.current.addSource('camera-points-source', {
           type: 'geojson',
           data: {
@@ -918,11 +925,15 @@ const Map = forwardRef<MapRef, MapProps>(function Map({
             ]
           }
         })
+        
+        console.log(`🔒 Camera markers rendered: ${pointFeatures.length} markers (owner/incident view only)`)
+      } else if (showHeatmap && !showOwnerView) {
+        console.log(`🔒 Individual camera markers hidden for security (community hexagon view)`)
       }
     } catch (cameraError) {
       console.warn('⚠️ Error updating camera markers (non-critical):', cameraError)
     }
-  }, [markers, placementData, isLoaded, showCameraMarkers, showOwnerView]) // Stable dependencies
+  }, [markers, placementData, isLoaded, showCameraMarkers, showOwnerView, showHeatmap]) // Added showHeatmap for marker visibility control
 
   // Helper function to create circle GeoJSON
   const createCircleGeoJSON = useCallback((center: Location, radiusInMeters: number) => {
