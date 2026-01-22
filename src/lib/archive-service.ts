@@ -292,11 +292,11 @@ export function shouldArchive(request: FootageRequest): 'fulfilled' | 'expired' 
   
   const createdAt = request.createdAt instanceof Date 
     ? request.createdAt 
-    : request.createdAt?.toDate?.() || new Date(request.createdAt)
+    : (request.createdAt as any)?.toDate?.() || now
     
   const expiresAt = request.expiresAt instanceof Date 
     ? request.expiresAt 
-    : request.expiresAt?.toDate?.() || new Date(request.expiresAt)
+    : (request.expiresAt as any)?.toDate?.() || now
   
   // Check archiving rules
   if (request.status === 'fulfilled' && createdAt < thirtyDaysAgo) {
