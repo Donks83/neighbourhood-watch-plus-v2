@@ -720,8 +720,8 @@ export default function HomePage() {
         {/* Report Incident Button - Removed per user request */}
       </div>
 
-      {/* Instructions Banner */}
-      {!selectedLocation && !showHeatmap && (
+      {/* Instructions Banner - Only show when not viewing hex grid */}
+      {!selectedLocation && !canViewHexGrid && (
         <div className="absolute bottom-6 left-6 z-[1000] max-w-sm">
           <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-lg p-4 shadow-lg border border-gray-200/50 dark:border-gray-700/50">
             <div className="flex items-start gap-3">
@@ -745,8 +745,8 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Heatmap Instructions */}
-      {showHeatmap && !selectedLocation && (
+      {/* Hex Grid Instructions - Only for premium users */}
+      {canViewHexGrid && !selectedLocation && (
         <div className="absolute bottom-6 left-6 z-[1000] max-w-sm">
           <div className="bg-blue-50/90 dark:bg-blue-950/90 backdrop-blur-sm rounded-lg p-4 shadow-lg border border-blue-200/50 dark:border-blue-800/50">
             <div className="flex items-start gap-3">
@@ -843,7 +843,7 @@ export default function HomePage() {
           </div>
         )}
         
-        {showHeatmap && (
+        {canViewHexGrid && (
           <div className="bg-blue-100 dark:bg-blue-900 border border-blue-300 dark:border-blue-700 rounded-lg px-3 py-2 shadow-sm">
             <div className="text-xs text-blue-800 dark:text-blue-200 flex items-center gap-2">
               <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-red-500 rounded-full animate-pulse" />
