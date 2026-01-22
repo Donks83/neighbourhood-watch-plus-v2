@@ -75,7 +75,7 @@ async function hasPermission(userId: string, permission: keyof UserPermissions):
  */
 async function isAdmin(userId: string): Promise<boolean> {
   const role = await getUserRole(userId)
-  return role ? ['admin', 'moderator', 'super_admin'].includes(role.role) : false
+  return role ? ['admin', 'super_admin'].includes(role.role) : false
 }
 
 /**
@@ -92,11 +92,29 @@ function getDefaultPermissions(roleType: UserRoleType): UserPermissions {
       canDeleteContent: false,
       canExportData: false
     },
-    moderator: {
-      canVerifyCameras: true,
+    police: {
+      canVerifyCameras: false,
       canManageUsers: false,
-      canViewAnalytics: true,
-      canManageReports: true,
+      canViewAnalytics: false,
+      canManageReports: false,
+      canAssignModerators: false,
+      canDeleteContent: false,
+      canExportData: false
+    },
+    insurance: {
+      canVerifyCameras: false,
+      canManageUsers: false,
+      canViewAnalytics: false,
+      canManageReports: false,
+      canAssignModerators: false,
+      canDeleteContent: false,
+      canExportData: false
+    },
+    security: {
+      canVerifyCameras: false,
+      canManageUsers: false,
+      canViewAnalytics: false,
+      canManageReports: false,
       canAssignModerators: false,
       canDeleteContent: false,
       canExportData: false
