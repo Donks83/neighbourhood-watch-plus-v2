@@ -1,7 +1,7 @@
 import type { Location } from '@/types'
 import type { Timestamp } from 'firebase/firestore'
 
-export type RequestStatus = 'pending' | 'approved' | 'denied' | 'expired' | 'fulfilled'
+export type RequestStatus = 'pending' | 'approved' | 'denied' | 'expired' | 'fulfilled' | 'cancelled'
 export type RequestPriority = 'low' | 'medium' | 'high' | 'urgent'
 
 export interface FootageRequest {
