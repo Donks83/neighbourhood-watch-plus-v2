@@ -371,10 +371,7 @@ export default function AdminPage() {
 
           {/* User Management Tab */}
           <TabsContent value="users" className="space-y-6">
-      </div>
-    </div>
-  )
-}            <Card>
+            <Card>
               <CardHeader>
                 <CardTitle>User Management</CardTitle>
                 <CardDescription>
