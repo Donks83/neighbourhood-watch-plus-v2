@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { 
@@ -100,9 +100,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
               coordinates,
               isVerified: false
             }
-            console.log('✅ Address geocoded during profile creation')
+            console.log('âœ… Address geocoded during profile creation')
           } else {
-            console.warn('⚠️ Failed to geocode address during profile creation')
+            console.warn('âš ï¸ Failed to geocode address during profile creation')
           }
         }
       }
@@ -146,10 +146,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       try {
         await setDoc(userRef, newUserProfile)
-        console.log('✅ User profile created successfully')
+        console.log('âœ… User profile created successfully')
         return newUserProfile
       } catch (error) {
-        console.error('❌ Error creating user profile:', error)
+        console.error('âŒ Error creating user profile:', error)
         throw error
       }
     } else {
@@ -163,7 +163,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         await setDoc(userRef, updatedProfile, { merge: true })
         return updatedProfile
       } catch (error) {
-        console.error('❌ Error updating user profile:', error)
+        console.error('âŒ Error updating user profile:', error)
         return existingProfile
       }
     }
@@ -182,7 +182,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return await createUserProfile(user)
       }
     } catch (error) {
-      console.error('❌ Error loading user profile:', error)
+      console.error('âŒ Error loading user profile:', error)
       return null
     }
   }
@@ -204,10 +204,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       await sendEmailVerification(result.user)
       await createUserProfile(result.user, { displayName }, address)
       
-      console.log('✅ User account created successfully')
+      console.log('âœ… User account created successfully')
       return result.user
     } catch (error: any) {
-      console.error('❌ Error creating account:', error)
+      console.error('âŒ Error creating account:', error)
       throw new Error(getErrorMessage(error.code))
     }
   }
@@ -244,9 +244,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       // Update user profile with new address
       await updateUserProfile({ address: completeAddress })
       
-      console.log('✅ User address updated and geocoded successfully')
+      console.log('âœ… User address updated and geocoded successfully')
     } catch (error: any) {
-      console.error('❌ Error updating user address:', error)
+      console.error('âŒ Error updating user address:', error)
       throw error
     }
   }
@@ -255,10 +255,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const signIn = async (email: string, password: string): Promise<User> => {
     try {
       const result = await signInWithEmailAndPassword(auth, email, password)
-      console.log('✅ User signed in successfully')
+      console.log('âœ… User signed in successfully')
       return result.user
     } catch (error: any) {
-      console.error('❌ Error signing in:', error)
+      console.error('âŒ Error signing in:', error)
       throw new Error(getErrorMessage(error.code))
     }
   }
@@ -273,10 +273,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const result = await signInWithPopup(auth, provider)
       await createUserProfile(result.user)
       
-      console.log('✅ User signed in with Google successfully')
+      console.log('âœ… User signed in with Google successfully')
       return result.user
     } catch (error: any) {
-      console.error('❌ Error signing in with Google:', error)
+      console.error('âŒ Error signing in with Google:', error)
       throw new Error(getErrorMessage(error.code))
     }
   }
@@ -287,9 +287,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       await signOut(auth)
       setUser(null)
       setUserProfile(null)
-      console.log('✅ User signed out successfully')
+      console.log('âœ… User signed out successfully')
     } catch (error) {
-      console.error('❌ Error signing out:', error)
+      console.error('âŒ Error signing out:', error)
       throw error
     }
   }
@@ -298,9 +298,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const resetPassword = async (email: string): Promise<void> => {
     try {
       await sendPasswordResetEmail(auth, email)
-      console.log('✅ Password reset email sent')
+      console.log('âœ… Password reset email sent')
     } catch (error: any) {
-      console.error('❌ Error sending password reset email:', error)
+      console.error('âŒ Error sending password reset email:', error)
       throw new Error(getErrorMessage(error.code))
     }
   }
@@ -311,9 +311,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     
     try {
       await sendEmailVerification(user)
-      console.log('✅ Verification email sent')
+      console.log('âœ… Verification email sent')
     } catch (error: any) {
-      console.error('❌ Error sending verification email:', error)
+      console.error('âŒ Error sending verification email:', error)
       throw new Error(getErrorMessage(error.code))
     }
   }
@@ -332,9 +332,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       await setDoc(userRef, updateData, { merge: true })
       setUserProfile(prev => prev ? { ...prev, ...updateData } : null)
       
-      console.log('✅ User profile updated successfully')
+      console.log('âœ… User profile updated successfully')
     } catch (error) {
-      console.error('❌ Error updating user profile:', error)
+      console.error('âŒ Error updating user profile:', error)
       throw error
     }
   }
@@ -347,7 +347,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const profile = await loadUserProfile(user)
       setUserProfile(profile)
     } catch (error) {
-      console.error('❌ Error refreshing user profile:', error)
+      console.error('âŒ Error refreshing user profile:', error)
     }
   }
 
@@ -360,7 +360,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       console.log('User role loaded:', role)
       return role
     } catch (error) {
-      console.error('❌ Error loading user role:', error)
+      console.error('âŒ Error loading user role:', error)
       return null
     }
   }
@@ -373,7 +373,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const { hasPermission } = await import('@/lib/admin')
       return await hasPermission(user.uid, permission as any)
     } catch (error) {
-      console.error('❌ Error checking admin permission:', error)
+      console.error('âŒ Error checking admin permission:', error)
       return false
     }
   }
@@ -387,7 +387,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUserRole(role)
       setIsAdmin(role ? ['admin', 'moderator', 'super_admin'].includes(role.role) : false)
     } catch (error) {
-      console.error('❌ Error refreshing user role:', error)
+      console.error('âŒ Error refreshing user role:', error)
     }
   }
 
@@ -403,11 +403,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           loadUserRole(user)
         ])
         console.log('Profile loaded:', profile?.displayName)
-        console.log('Role loaded:', role?.role || 'No role found')
+        console.log('Profile role:', profile?.role || 'No role')
         setUserProfile(profile)
         setUserRole(role)
-        const adminStatus = role ? ['admin', 'moderator', 'super_admin'].includes(role.role) : false
-        console.log('Admin status:', adminStatus)
+        const profileRole = profile?.role || 'user'
+        const adminStatus = ['admin', 'super_admin'].includes(profileRole)
+        console.log('Admin status:', adminStatus, 'role:', profileRole)
         setIsAdmin(adminStatus)
       } else {
         setUser(null)
@@ -469,3 +470,4 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 }
 
 export default AuthProvider
+
