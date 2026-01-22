@@ -38,7 +38,7 @@ const USER_ROLES = [
 ]
 
 export default function AdminPage() {
-  const { user, isAdmin } = useAuth()
+  const { user, userProfile, isAdmin } = useAuth()
   const router = useRouter()
   const [hasAdminAccess, setHasAdminAccess] = useState<boolean | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -67,34 +67,29 @@ export default function AdminPage() {
   // Check admin permissions on page load
   useEffect(() => {
     async function checkAdminAccess() {
-      if (!user) {
+      if (!user || !userProfile) {
         setHasAdminAccess(false)
         setIsLoading(false)
         return
       }
 
-      try {
-        // Import admin functions dynamically
-        const { getUserRole, hasPermission } = await import('@/lib/admin')
-        
-        // Check if user has admin permissions
-        const canVerify = await hasPermission(user.uid, 'canVerifyCameras')
-        const role = await getUserRole(user.uid)
-        
-        console.log('Admin check - Can verify:', canVerify, 'Role:', role?.role)
-        
-        setUserRole(role?.role || 'user')
-        setHasAdminAccess(canVerify)
-      } catch (error) {
-        console.error('Error checking admin access:', error)
-        setHasAdminAccess(false)
-      } finally {
-        setIsLoading(false)
-      }
+      // Use the role from userProfile (already loaded by auth context)
+      const profileRole = userProfile.role || 'user'
+      const adminAccess = ['admin', 'super_admin'].includes(profileRole)
+      
+      console.log('🔐 Admin page access check:', {
+        role: profileRole,
+        isAdmin: adminAccess,
+        fromAuthContext: isAdmin
+      })
+      
+      setUserRole(profileRole)
+      setHasAdminAccess(adminAccess)
+      setIsLoading(false)
     }
 
     checkAdminAccess()
-  }, [user])  
+  }, [user, userProfile, isAdmin])  
   // Load admin statistics
   useEffect(() => {
     async function loadStatistics() {
