@@ -19,7 +19,8 @@ export type RejectionReason =
   | 'other'               // Custom reason provided
 
 // User Role and Permission System
-export type UserRoleType = 'user' | 'moderator' | 'admin' | 'super_admin'
+// Includes community roles (user) and premium roles (police, insurance, security)
+export type UserRoleType = 'user' | 'police' | 'insurance' | 'security' | 'admin' | 'super_admin'
 
 export interface UserPermissions {
   canVerifyCameras: boolean

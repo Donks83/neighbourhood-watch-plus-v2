@@ -1,6 +1,6 @@
 import type { Location } from './index'
 import type { Timestamp } from 'firebase/firestore'
-import type { CameraVerification, EnhancedTrustScore, UserRole } from './verification'
+import type { CameraVerification, EnhancedTrustScore, UserRoleType } from './verification'
 
 // User profile and address information
 export interface UserAddress {
@@ -22,8 +22,8 @@ export interface UserProfile {
   // Enhanced trust score system v2.0
   enhancedTrustScore: EnhancedTrustScore
   
-  // User role and permissions
-  role?: UserRole
+  // User role and permissions (stored as simple string in Firestore)
+  role?: UserRoleType
   
   stats?: {
     camerasRegistered: number
