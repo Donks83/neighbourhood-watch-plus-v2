@@ -69,7 +69,7 @@ Hide individual camera markers from public view, show only hexagonal density gri
 - [x] Update camera marker conditional logic - COMPLETE
 - [x] Add showHeatmap to dependency array - COMPLETE
 - [x] Build test passed ✅ (compiled successfully)
-- [ ] Commit Phase 2 - **READY TO COMMIT**
+- [x] Commit Phase 2 - **COMMITTED** ✅ (commit 87c9e53)
 
 **Phase 2 Status:** ✅ COMPLETE
 
