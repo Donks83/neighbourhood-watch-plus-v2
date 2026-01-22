@@ -34,7 +34,13 @@ export default function AdminPage() {
   const [userRole, setUserRole] = useState<string | null>(null)
   
   // Admin statistics state
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<{
+    totalUsers: number
+    totalRequests: number
+    totalCameras: number
+    archivedRequests: number
+    archiveBreakdown: Record<string, number>
+  }>({
     totalUsers: 0,
     totalRequests: 0,
     totalCameras: 0,
@@ -342,25 +348,25 @@ export default function AdminPage() {
                 <div className="grid grid-cols-4 gap-4">
                   <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
                     <div className="text-2xl font-bold text-green-600">
-                      {stats.archiveBreakdown.fulfilled}
+                      {stats.archiveBreakdown.fulfilled || 0}
                     </div>
                     <div className="text-sm text-gray-600">Fulfilled</div>
                   </div>
                   <div className="text-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
                     <div className="text-2xl font-bold text-red-600">
-                      {stats.archiveBreakdown.expired}
+                      {stats.archiveBreakdown.expired || 0}
                     </div>
                     <div className="text-sm text-gray-600">Expired</div>
                   </div>
                   <div className="text-center p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
                     <div className="text-2xl font-bold text-yellow-600">
-                      {stats.archiveBreakdown.cancelled}
+                      {stats.archiveBreakdown.cancelled || 0}
                     </div>
                     <div className="text-sm text-gray-600">Cancelled</div>
                   </div>
                   <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                     <div className="text-2xl font-bold text-gray-600">
-                      {stats.archiveBreakdown.manual}
+                      {stats.archiveBreakdown.manual || 0}
                     </div>
                     <div className="text-sm text-gray-600">Manual</div>
                   </div>
