@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useCallback, useRef } from 'react'
-import { AlertCircleIcon, CameraIcon, BellIcon, MenuIcon, ShieldIcon, UserIcon, LogOutIcon, SettingsIcon, HomeIcon, ChevronDownIcon, AlertCircle, Shield, Camera } from 'lucide-react'
+import { AlertCircleIcon, CameraIcon, BellIcon, MenuIcon, ShieldIcon, UserIcon, LogOutIcon, SettingsIcon, HomeIcon, ChevronDownIcon, AlertCircle, Shield, Camera, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 import Map, { type MapRef } from '@/components/map/map'
 import IncidentReportPanel from '@/components/map/incident-report-panel'
@@ -599,77 +599,140 @@ export default function HomePage() {
                       className="fixed inset-0 z-[1900]" 
                       onClick={() => setShowUserMenu(false)}
                     />
-                    <div className="absolute right-0 top-full mt-1 z-[2000] w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
+                    <div className="absolute right-0 top-full mt-1 z-[2000] w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
                       <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {userProfile?.displayName || 'User'}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {user.email}
-                        </p>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                              {userProfile?.displayName || 'User'}
+                            </p>
+                            <p className="text-xs text-gray-500 truncate">
+                              {user.email}
+                            </p>
+                          </div>
+                          <span className={cn(
+                            "ml-2 px-2 py-0.5 text-xs font-medium rounded-full flex-shrink-0",
+                            userProfile?.role === 'super_admin' && "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+                            userProfile?.role === 'admin' && "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+                            (userProfile?.role === 'police' || userProfile?.role === 'insurance' || userProfile?.role === 'security') && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+                            (!userProfile?.role || userProfile?.role === 'user') && "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+                          )}>
+                            {userProfile?.role === 'super_admin' && 'Super Admin'}
+                            {userProfile?.role === 'admin' && 'Admin'}
+                            {userProfile?.role === 'police' && 'Police'}
+                            {userProfile?.role === 'insurance' && 'Insurance'}
+                            {userProfile?.role === 'security' && 'Security'}
+                            {(!userProfile?.role || userProfile?.role === 'user') && 'User'}
+                          </span>
+                        </div>
                       </div>
                       
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleCameraRegistrationOpen}
-                        className="w-full justify-start px-3 py-2 text-sm"
-                      >
-                        <HomeIcon className="w-4 h-4 mr-2" />
-                        My Property
-                      </Button>
-                      
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setShowUserMenu(false)
-                          setIsRequestManagementOpen(true)
-                        }}
-                        className="w-full justify-start px-3 py-2 text-sm relative"
-                      >
-                        <BellIcon className="w-4 h-4 mr-2" />
-                        Footage Requests
-                        {unreadNotifications > 0 && (
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 bg-red-600 text-white text-xs rounded-full flex items-center justify-center">
-                            {unreadNotifications}
-                          </span>
-                        )}
-                      </Button>
-                      
-                      {/* Admin Panel - Only show for admin users */}
-                      {isAdmin && (
-                        <Link href="/admin" className="block">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowUserMenu(false)}
-                            className="w-full justify-start px-3 py-2 text-sm bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-gradient-to-r hover:from-blue-100 hover:to-purple-100 dark:hover:from-blue-900/40 dark:hover:to-purple-900/40"
-                          >
-                            <ShieldIcon className="w-4 h-4 mr-2" />
-                            Admin Panel
-                            <span className="ml-auto text-xs bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200 px-2 py-0.5 rounded-full">
-                              NEW
+                      <div className="py-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setShowUserMenu(false)
+                            handleCameraRegistrationOpen()
+                          }}
+                          className="w-full justify-start px-3 py-2 text-sm"
+                        >
+                          <HomeIcon className="w-4 h-4 mr-2" />
+                          My Property
+                        </Button>
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setShowUserMenu(false)
+                            setIsRequestManagementOpen(true)
+                          }}
+                          className="w-full justify-start px-3 py-2 text-sm relative"
+                        >
+                          <BellIcon className="w-4 h-4 mr-2" />
+                          Footage Requests
+                          {unreadNotifications > 0 && (
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 bg-red-600 text-white text-xs rounded-full flex items-center justify-center">
+                              {unreadNotifications}
                             </span>
-                          </Button>
-                        </Link>
+                          )}
+                        </Button>
+                      </div>
+                      
+                      {canViewHexGrid && !isAdmin && (
+                        <>
+                          <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                          <div className="px-3 py-1">
+                            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                              Premium Features
+                            </p>
+                          </div>
+                          <div className="py-1">
+                            <div className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400">
+                              <div className="flex items-center gap-2 text-xs">
+                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                Coverage Grid Active
+                              </div>
+                            </div>
+                          </div>
+                        </>
                       )}
                       
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full justify-start px-3 py-2 text-sm"
-                      >
-                        <SettingsIcon className="w-4 h-4 mr-2" />
-                        Settings
-                      </Button>
+                      {isAdmin && (
+                        <>
+                          <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                          <div className="px-3 py-1">
+                            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                              Admin Tools
+                            </p>
+                          </div>
+                          <div className="py-1">
+                            <Link href="/admin" className="block">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setShowUserMenu(false)}
+                                className="w-full justify-start px-3 py-2 text-sm"
+                              >
+                                <ShieldIcon className="w-4 h-4 mr-2" />
+                                Admin Dashboard
+                              </Button>
+                            </Link>
+                            
+                            <Link href="/admin?tab=users" className="block">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setShowUserMenu(false)}
+                                className="w-full justify-start px-3 py-2 text-sm"
+                              >
+                                <UserIcon className="w-4 h-4 mr-2" />
+                                Manage Users
+                              </Button>
+                            </Link>
+                            
+                            <Link href="/admin?tab=verification" className="block">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setShowUserMenu(false)}
+                                className="w-full justify-start px-3 py-2 text-sm"
+                              >
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Camera Verification
+                              </Button>
+                            </Link>
+                          </div>
+                        </>
+                      )}
                       
                       <div className="border-t border-gray-200 dark:border-gray-700 mt-1 pt-1">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={handleLogout}
-                          className="w-full justify-start px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400"
+                          className="w-full justify-start px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
                         >
                           <LogOutIcon className="w-4 h-4 mr-2" />
                           Sign Out
