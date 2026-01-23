@@ -17,7 +17,7 @@ import {
   BarChart3,
   Archive,
   FileText,
-  Settings
+  Settings,
   X
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
