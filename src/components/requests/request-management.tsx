@@ -28,6 +28,7 @@ import { formatDate, formatDateTime, formatRelativeTime } from '@/lib/date-utils
 import { useAuth } from '@/contexts/auth-context'
 import FootageUpload from '@/components/requests/footage-upload'
 import FootageViewer from '@/components/requests/footage-viewer'
+import PrivacyWarningModal from '@/components/safety/privacy-warning-modal'
 import { 
   getRequestsForOwner, 
   getRequestsByUser,
@@ -67,6 +68,19 @@ export default function RequestManagement({ isOpen, onClose }: RequestManagement
   const [selectedCameraResponse, setSelectedCameraResponse] = useState<CameraResponse | null>(null)
   const [showFootageViewer, setShowFootageViewer] = useState(false)
   const [selectedViewerRequest, setSelectedViewerRequest] = useState<FootageRequest | null>(null)
+  
+  // Privacy warning modal state
+  const [showPrivacyWarning, setShowPrivacyWarning] = useState(false)
+  const [privacyWarningAction, setPrivacyWarningAction] = useState<'upload' | 'approve'>('upload')
+  const [pendingApproveData, setPendingApproveData] = useState<{
+    requestId: string
+    cameraId: string
+    reason?: string
+  } | null>(null)
+  const [pendingUploadData, setPendingUploadData] = useState<{
+    request: FootageRequest
+    response: CameraResponse
+  } | null>(null)
   const [cancellingRequest, setCancellingRequest] = useState<string | null>(null)
 
   // Load requests and notifications
@@ -131,6 +145,15 @@ export default function RequestManagement({ isOpen, onClose }: RequestManagement
   ) => {
     if (!user) return
     
+    // Show privacy warning for approve action
+    if (status === 'approved') {
+      const reason = responseReasons[`${requestId}-${cameraId}`]
+      setPendingApproveData({ requestId, cameraId, reason })
+      setPrivacyWarningAction('approve')
+      setShowPrivacyWarning(true)
+      return
+    }
+    
     setRespondingTo(`${requestId}-${cameraId}`)
     try {
       const reason = responseReasons[`${requestId}-${cameraId}`]
@@ -155,11 +178,21 @@ export default function RequestManagement({ isOpen, onClose }: RequestManagement
     }
   }
 
-  // Handle opening upload modal
+  // Handle opening upload modal (with privacy warning)
   const handleOpenUpload = (request: FootageRequest, response: CameraResponse) => {
-    setSelectedUploadRequest(request)
-    setSelectedCameraResponse(response)
+    // Show privacy warning first
+    setPendingUploadData({ request, response })
+    setPrivacyWarningAction('upload')
+    setShowPrivacyWarning(true)
+  }
+  
+  // Actually open upload modal (after privacy warning accepted)
+  const proceedWithUpload = () => {
+    if (!pendingUploadData) return
+    setSelectedUploadRequest(pendingUploadData.request)
+    setSelectedCameraResponse(pendingUploadData.response)
     setShowUploadModal(true)
+    setPendingUploadData(null)
   }
 
   // Handle upload completion
@@ -179,6 +212,46 @@ export default function RequestManagement({ isOpen, onClose }: RequestManagement
     setShowUploadModal(false)
     setSelectedUploadRequest(null)
     setSelectedCameraResponse(null)
+  }
+  
+  // Handle privacy warning acceptance
+  const handlePrivacyWarningAccept = async () => {
+    setShowPrivacyWarning(false)
+    
+    if (privacyWarningAction === 'approve' && pendingApproveData) {
+      // Proceed with approve action
+      const { requestId, cameraId, reason } = pendingApproveData
+      setRespondingTo(`${requestId}-${cameraId}`)
+      try {
+        await updateCameraResponse(requestId, cameraId, 'approved', reason)
+        await loadData()
+        
+        // Clear reason
+        setResponseReasons(prev => {
+          const newReasons = { ...prev }
+          delete newReasons[`${requestId}-${cameraId}`]
+          return newReasons
+        })
+        
+        alert('✅ Response submitted: approved')
+      } catch (error) {
+        console.error('❌ Error responding to request:', error)
+        alert('Failed to submit response. Please try again.')
+      } finally {
+        setRespondingTo(null)
+        setPendingApproveData(null)
+      }
+    } else if (privacyWarningAction === 'upload') {
+      // Proceed with upload
+      proceedWithUpload()
+    }
+  }
+  
+  // Handle privacy warning cancellation
+  const handlePrivacyWarningClose = () => {
+    setShowPrivacyWarning(false)
+    setPendingApproveData(null)
+    setPendingUploadData(null)
   }
 
   // Handle opening footage viewer
@@ -762,6 +835,14 @@ export default function RequestManagement({ isOpen, onClose }: RequestManagement
           onClose={handleCloseFootageViewer}
         />
       )}
+      
+      {/* Privacy Warning Modal */}
+      <PrivacyWarningModal
+        isOpen={showPrivacyWarning}
+        onClose={handlePrivacyWarningClose}
+        onAccept={handlePrivacyWarningAccept}
+        action={privacyWarningAction}
+      />
     </>
   )
 }
