@@ -35,6 +35,7 @@ export default function HomePage() {
   const { user, userProfile, isAdmin, logout, loading } = useAuth()
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const router = useRouter()
   const [isRequestManagementOpen, setIsRequestManagementOpen] = useState(false)
   const [unreadNotifications, setUnreadNotifications] = useState(0)
   
@@ -248,25 +249,9 @@ export default function HomePage() {
   }, [userLocation])
 
   // Handle camera registration
-  const handleCameraRegistrationOpen = () => {
-    if (!user) {
-      setIsAuthDialogOpen(true)
-      return
-    }
-    setIsCameraRegistrationOpen(true)
-  }
 
-  const handleCameraRegistrationClose = () => {
-    setIsCameraRegistrationOpen(false)
-  }
 
-  const handleCamerasChange = (cameras: RegisteredCamera[]) => {
-    setRegisteredCameras(cameras)
-    
-    // When user's cameras change, reload community heatmap to include new data
-    loadCommunityHeatmapCameras()
-    
-    console.log(`✅ Updated user cameras: ${cameras.length} registered cameras`)
+ registered cameras`)
   }
 
   // Handle density areas change with stable callback
@@ -281,7 +266,6 @@ export default function HomePage() {
       setShowUserMenu(false)
       // Clear user-specific data only (keep community heatmap data)
       setRegisteredCameras([])
-      setIsCameraRegistrationOpen(false)
       setIsReportFormOpen(false)
       setSelectedLocation(null)
       // Community heatmap cameras remain available for anonymous users
@@ -532,7 +516,7 @@ export default function HomePage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={handleCameraRegistrationOpen}
+                        onClick={() => router.push("/my-property")}
                         className="relative text-xs font-medium px-3 py-1.5 text-red-600 hover:text-red-700 hover:bg-red-50"
                       >
                         <AlertCircle className="w-4 h-4 mr-1" />
@@ -547,7 +531,7 @@ export default function HomePage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={handleCameraRegistrationOpen}
+                        onClick={() => router.push("/my-property")}
                         className="relative text-xs font-medium px-3 py-1.5 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
                       >
                         <Shield className="w-4 h-4 mr-1" />
@@ -562,7 +546,7 @@ export default function HomePage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={handleCameraRegistrationOpen}
+                        onClick={() => router.push("/my-property")}
                         className="relative text-xs font-medium px-3 py-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                       >
                         <Camera className="w-4 h-4 mr-1" />
@@ -647,7 +631,7 @@ export default function HomePage() {
                           size="sm"
                           onClick={() => {
                             setShowUserMenu(false)
-                            handleCameraRegistrationOpen()
+                            router.push("/my-property")
                           }}
                           className="w-full justify-start px-3 py-2 text-sm"
                         >
@@ -853,15 +837,6 @@ export default function HomePage() {
         onRadiusChange={handleRadiusChange}
         isSubmitting={isSubmitting}
       />
-
-      {/* Camera Registration Dashboard */}
-      {user && (
-        <CameraRegistrationDashboard
-          isOpen={isCameraRegistrationOpen}
-          onClose={handleCameraRegistrationClose}
-          onCamerasChange={handleCamerasChange}
-        />
-      )}
 
       {/* Authentication Dialog */}
       <AuthDialog
