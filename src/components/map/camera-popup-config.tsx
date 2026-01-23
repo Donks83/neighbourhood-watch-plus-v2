@@ -179,7 +179,7 @@ export default function CameraPopupConfig({
       
       {/* Small Popup Window */}
       <div 
-        className="fixed z-[1800] bg-white dark:bg-gray-900 rounded-xl shadow-2xl border-2 border-blue-200 dark:border-blue-700 w-80 overflow-hidden"
+        className="fixed z-[1800] bg-white dark:bg-gray-900 rounded-xl shadow-2xl border-2 border-blue-200 dark:border-blue-700 w-80 max-h-[calc(100vh-100px)] flex flex-col"
         style={{
           left: `${safePosition.x}px`,
           top: `${safePosition.y}px`,

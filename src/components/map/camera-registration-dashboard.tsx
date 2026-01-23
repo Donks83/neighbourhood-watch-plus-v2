@@ -164,17 +164,10 @@ export default function CameraRegistrationDashboard({
         setPendingCameraPlacement(newCamera)
         setIsConfigPopupOpen(true)
         
-        // Calculate popup position next to the click (simple offset)
-        if (screenPosition) {
-          // Position popup to the right and slightly above the click
-          const popupX = Math.min(screenPosition.x + 20, window.innerWidth - 350)
-          const popupY = Math.max(screenPosition.y - 50, 20)
-          setPopupPosition({ x: popupX, y: popupY })
-        } else if (mapContainerRef) {
-          // Fallback to center-right of map
-          const mapRect = mapContainerRef.getBoundingClientRect()
-          setPopupPosition({ x: mapRect.left + mapRect.width - 340, y: mapRect.top + 50 })
-        }
+        // Always center the popup on screen for better UX
+        const popupX = (window.innerWidth - 320) / 2  // 320 = popup width
+        const popupY = Math.max(50, (window.innerHeight - 600) / 2)  // Center vertically with min top margin
+        setPopupPosition({ x: popupX, y: popupY })
         
         console.log('📍 Camera pin placed & popup opened next to marker')
       } else {
@@ -193,12 +186,8 @@ export default function CameraRegistrationDashboard({
           tempId: `temp-${Date.now()}`
         } : null)
         
-        // Update popup position if we have screen coordinates
-        if (screenPosition) {
-          const popupX = Math.min(screenPosition.x + 20, window.innerWidth - 350)
-          const popupY = Math.max(screenPosition.y - 50, 20)
-          setPopupPosition({ x: popupX, y: popupY })
-        }
+        // Keep popup centered even when moving pin
+        // (No need to update position - it stays centered)
         
         console.log('🔄 Camera pin moved to new location with popup following')
       }
