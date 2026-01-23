@@ -472,8 +472,8 @@ export default function MyPropertyPage() {
                         onMapClick={handleMapClick}
                         markers={placementData ? [{
                           id: placementData.tempId,
-                          position: placementData.location,
-                          type: 'camera-placement'
+                          location: placementData.location,
+                          type: 'camera'
                         }] : []}
                         temporaryMarkerRadius={0}
                         showHeatmap={false}
