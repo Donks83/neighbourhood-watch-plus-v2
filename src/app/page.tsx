@@ -6,7 +6,7 @@ import Link from 'next/link'
 import Map, { type MapRef } from '@/components/map/map'
 import IncidentReportPanel from '@/components/map/incident-report-panel'
 import TemporaryMarkerRegistration from '@/components/temporary-evidence/temporary-marker-registration'
-import CameraRegistrationDashboard from '@/components/map/camera-registration-dashboard'
+
 import LocationSearch from '@/components/map/location-search'
 import AuthDialog from '@/components/auth/auth-dialog'
 import RequestManagement from '@/components/requests/request-management'
@@ -25,7 +25,7 @@ export default function HomePage() {
   const [markers, setMarkers] = useState<MapMarker[]>([])
   const [densityAreas, setDensityAreas] = useState<CameraDensityArea[]>([])
   const [heatmapRegenerationKey, setHeatmapRegenerationKey] = useState(0)
-  const [isCameraRegistrationOpen, setIsCameraRegistrationOpen] = useState(false)
+
   const [userLocation, setUserLocation] = useState<Location | null>(null)
   const [registeredCameras, setRegisteredCameras] = useState<RegisteredCamera[]>([])
   const [communityHeatmapCameras, setCommunityHeatmapCameras] = useState<RegisteredCamera[]>([])
