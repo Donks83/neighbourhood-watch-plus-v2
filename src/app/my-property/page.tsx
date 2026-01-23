@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/auth-context'
 import { getUserCameras, updateCamera, deleteCamera } from '@/lib/firestore'
 import { formatDisplayAddress } from '@/lib/geocoding'
+import { formatCoordinates } from '@/lib/utils'
 import type { Location, MapMarker } from '@/types'
 import type { RegisteredCamera, CameraPlacementData } from '@/types/camera'
 
@@ -377,11 +378,11 @@ export default function MyPropertyPage() {
                           <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
                             <p className="flex items-center gap-2">
                               <MapPin className="w-4 h-4" />
-                              {formatDisplayAddress(camera.location.lat, camera.location.lng)}
+                              {formatCoordinates(camera.location.lat, camera.location.lng)}
                             </p>
                             <p className="flex items-center gap-2">
                               <Eye className="w-4 h-4" />
-                              View distance: {camera.viewDistance}m
+                              View distance: {camera.fieldOfView.range}m
                             </p>
                             <p className="flex items-center gap-2">
                               <Camera className="w-4 h-4" />
