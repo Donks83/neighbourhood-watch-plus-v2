@@ -216,7 +216,7 @@ export default function MyPropertyPage() {
     if (!confirmed) return
     
     try {
-      await deleteCamera(cameraId)
+      await deleteCamera(cameraId, user.uid)
       
       // Reload cameras
       hasLoadedCameras.current = false
