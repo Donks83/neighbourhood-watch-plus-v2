@@ -468,7 +468,6 @@ export default function MyPropertyPage() {
                       <Map
                         ref={mapRef}
                         initialCenter={userProfile?.address?.coordinates || { lat: 52.0406, lng: 1.1556 }}
-                        initialZoom={16}
                         onMapClick={handleMapClick}
                         markers={placementData ? [{
                           id: placementData.tempId,
