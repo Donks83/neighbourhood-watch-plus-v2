@@ -186,12 +186,12 @@ export default function MyPropertyPage() {
   }
 
   // Handle save edit
-  const handleSaveEdit = async (updatedCamera: RegisteredCamera) => {
+  const handleSaveEdit = async (cameraId: string, updates: Partial<RegisteredCamera>) => {
     if (!user) return
     
     try {
       setIsSavingEdit(true)
-      await updateCamera(updatedCamera.id, updatedCamera)
+      await updateCamera(cameraId, updates)
       
       // Reload cameras
       hasLoadedCameras.current = false
