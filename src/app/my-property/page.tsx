@@ -79,7 +79,11 @@ export default function MyPropertyPage() {
         tempId: `temp-${Date.now()}`,
         name: `Camera ${userCameras.length + 1}`,
         type: 'security',
-        viewDistance: 12
+        fieldOfView: {
+          direction: 0,
+          angle: 90,
+          range: 12 // 12 meter radius for camera coverage
+        }
       }
       
       setPlacementData(newPlacement)
@@ -138,6 +142,21 @@ export default function MyPropertyPage() {
       console.error('❌ Error in handleSaveCamera:', error)
     } finally {
       setIsSavingCamera(false)
+    }
+  }
+
+  // Handle view distance change (for real-time map updates)
+  const handleViewDistanceChange = (distance: number) => {
+    if (placementData) {
+      const updated = {
+        ...placementData,
+        fieldOfView: {
+          ...placementData.fieldOfView,
+          range: distance
+        }
+      }
+      setPlacementData(updated)
+      setPendingCameraPlacement(updated)
     }
   }
 
@@ -504,6 +523,7 @@ export default function MyPropertyPage() {
           onClose={handleCancelAddCamera}
           placementData={pendingCameraPlacement}
           onSave={handleSaveCamera}
+          onViewDistanceChange={handleViewDistanceChange}
           isSubmitting={isSavingCamera}
           position={popupPosition}
         />
