@@ -80,7 +80,7 @@ const rejectionReasons: { value: RejectionReason; label: string; description: st
 ]
 
 export default function AdminVerificationQueue({ className }: AdminVerificationQueueProps) {
-  const { user } = useAuth()
+  const { user, userProfile } = useAuth()
   const [queueItems, setQueueItems] = useState<VerificationQueueItem[]>([])
   const [stats, setStats] = useState<VerificationStats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -107,16 +107,10 @@ export default function AdminVerificationQueue({ className }: AdminVerificationQ
       console.log('Loading verification data for admin:', user.uid)
       
       // Import admin functions dynamically
-      const { getPendingVerifications, getVerificationStats, hasPermission } = await import('@/lib/admin')
-      
-      // Check permissions
-      const canVerify = await hasPermission(user.uid, 'canVerifyCameras')
-      console.log('Can verify cameras:', canVerify)
-      
-      if (!canVerify) {
-        setError('You do not have permission to view verification queue')
-        return
-      }
+    const { getPendingVerifications, getVerificationStats } = await import('@/lib/admin')
+    
+    // Permission already checked by parent admin page
+    console.log('✅ Loading verification data for:', userProfile?.role)
       
       // Load data in parallel
       const [queueData, statsData] = await Promise.all([

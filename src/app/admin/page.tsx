@@ -18,6 +18,7 @@ import {
   Archive,
   FileText,
   Settings
+  X
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
@@ -63,6 +64,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<any[]>([])
   const [selectedUser, setSelectedUser] = useState<string | null>(null)
   const [newRateLimit, setNewRateLimit] = useState<number>(3)
+  const [activeTab, setActiveTab] = useState<string>('overview')
 
   // Check admin permissions on page load
   useEffect(() => {
@@ -132,6 +134,16 @@ export default function AdminPage() {
     }
   }, [hasAdminAccess])
 
+  // Read tab from URL parameter
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const tab = params.get('tab')
+      if (tab && ['overview', 'users', 'verification'].includes(tab)) {
+        setActiveTab(tab)
+      }
+    }
+  }, [])
   // Show loading state
   if (isLoading) {
     return (
@@ -261,7 +273,7 @@ export default function AdminPage() {
         </div>
 
         {/* Admin Tabs */}
-        <Tabs defaultValue="overview" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="overview">
               <BarChart3 className="w-4 h-4 mr-2" />
@@ -419,8 +431,24 @@ export default function AdminPage() {
                       
                       {/* User Management Controls (expanded) - WITH ROLE DROPDOWN */}
                       {selectedUser === userData.id && (
-                        <div className="absolute right-4 mt-2 w-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4 z-10">
-                          <h4 className="font-medium mb-4">User Management</h4>
+                        <>
+                          {/* Click outside to close */}
+                          <div 
+                            className="fixed inset-0 z-[5]" 
+                            onClick={() => setSelectedUser(null)}
+                          />
+                          <div className="absolute right-4 mt-2 w-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4 z-10">
+                            <div className="flex items-center justify-between mb-4">
+                              <h4 className="font-medium">User Management</h4>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setSelectedUser(null)}
+                                className="h-6 w-6 p-0"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
                           
                           {/* ROLE ASSIGNMENT SECTION */}
                           <div className="space-y-3 mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
@@ -531,6 +559,7 @@ export default function AdminPage() {
                             </Button>
                           </div>
                         </div>
+                      </>
                       )}
                     </div>
                   ))}

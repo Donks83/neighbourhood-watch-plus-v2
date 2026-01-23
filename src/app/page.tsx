@@ -29,6 +29,7 @@ export default function HomePage() {
   const [userLocation, setUserLocation] = useState<Location | null>(null)
   const [registeredCameras, setRegisteredCameras] = useState<RegisteredCamera[]>([])
   const [communityHeatmapCameras, setCommunityHeatmapCameras] = useState<RegisteredCamera[]>([])
+  const [showHexGrid, setShowHexGrid] = useState(true)
   
   // Authentication state
   const { user, userProfile, isAdmin, logout, loading } = useAuth()
@@ -344,7 +345,7 @@ export default function HomePage() {
         temporaryMarkerRadius={8}
         markers={markers}
         onMarkerClick={handleMarkerClick}
-        showHeatmap={canViewHexGrid}  // Role-based: only police/insurance/security see hex grid
+        showHeatmap={canViewHexGrid && showHexGrid}  // Role-based + toggle control
         showCameraMarkers={false}      // SECURITY: Never show individual camera markers
         registeredCameras={communityHeatmapCameras}
         onDensityAreasChange={handleDensityAreasChange}
@@ -572,6 +573,19 @@ export default function HomePage() {
                   return null
                 })()}
               </div>
+            )}
+
+            {/* Hex Grid Toggle - Premium Users Only */}
+            {canViewHexGrid && (
+              <Button
+                variant={showHexGrid ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowHexGrid(!showHexGrid)}
+                className="mr-2"
+              >
+                <Shield className="w-4 h-4 mr-2" />
+                {showHexGrid ? 'Hide Coverage' : 'Show Coverage'}
+              </Button>
             )}
 
             {/* User Authentication Area */}
