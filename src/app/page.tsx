@@ -248,12 +248,6 @@ export default function HomePage() {
     }
   }, [userLocation])
 
-  // Handle camera registration
-
-
- registered cameras`)
-  }
-
   // Handle density areas change with stable callback
   const handleDensityAreasChange = useCallback((areas: CameraDensityArea[]) => {
     setDensityAreas(areas)
