@@ -190,7 +190,7 @@ export default function MyPropertyPage() {
     
     try {
       setIsSavingEdit(true)
-      await updateCamera(updatedCamera)
+      await updateCamera(updatedCamera.id, updatedCamera)
       
       // Reload cameras
       hasLoadedCameras.current = false
@@ -235,7 +235,7 @@ export default function MyPropertyPage() {
     
     try {
       const newStatus = camera.status === 'active' ? 'inactive' : 'active'
-      await updateCamera({ ...camera, status: newStatus })
+      await updateCamera(camera.id, { status: newStatus })
       
       // Reload cameras
       hasLoadedCameras.current = false
