@@ -1,0 +1,184 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ============================================
+    // HELPER FUNCTIONS
+    // ============================================
+    
+    // Get user data for the authenticated user
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if user is admin or super_admin
+    function isAdmin() {
+      return isAuthenticated() && getUserData().role in ['admin', 'super_admin'];
+    }
+    
+    // Check if user is super admin
+    function isSuperAdmin() {
+      return isAuthenticated() && getUserData().role == 'super_admin';
+    }
+    
+    // Check if user has premium role (police, insurance, security)
+    function isPremiumUser() {
+      return isAuthenticated() && getUserData().role in ['police', 'insurance', 'security', 'admin', 'super_admin'];
+    }
+    
+    // Check if user is the document owner
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // ============================================
+    // USERS COLLECTION
+    // ============================================
+    
+    match /users/{userId} {
+      // Read: Owner or admin can read
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Create: Anyone authenticated can create their own profile
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Update: Owner can update their own data (except role field)
+      //         Admin can update any user (including role)
+      allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']))
+                    || isAdmin();
+      
+      // Delete: Only super admin can delete users
+      allow delete: if isSuperAdmin();
+    }
+    
+    // ============================================
+    // CAMERAS COLLECTION
+    // ============================================
+    
+    match /cameras/{cameraId} {
+      // Read: Premium users can see all cameras for hex grid
+      //       Regular users can see shared cameras
+      //       Owner can always see their own cameras
+      //       Admin can see all cameras
+      allow read: if isPremiumUser() 
+                  || (isAuthenticated() && resource.data.privacySettings.shareWithCommunity == true)
+                  || isOwner(resource.data.userId)
+                  || isAdmin();
+      
+      // Create: Any authenticated user can register cameras
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      
+      // Update: Owner can update their own cameras
+      //         Admin can update verification status
+      allow update: if isOwner(resource.data.userId)
+                    || (isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['verification']));
+      
+      // Delete: Owner or admin can delete
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+    
+    // ============================================
+    // VERIFICATION QUEUE COLLECTION
+    // ============================================
+    
+    match /verification_queue/{queueId} {
+      // Read: Admin only
+      allow read: if isAdmin();
+      
+      // Write: Admin only (for status updates)
+      allow write: if isAdmin();
+    }
+    
+    // ============================================
+    // FOOTAGE REQUESTS COLLECTION
+    // ============================================
+    
+    match /footageRequests/{requestId} {
+      // Read: Requester, target camera owners, premium users, or admin
+      allow read: if isAuthenticated() && (
+                    request.auth.uid == resource.data.requesterId
+                    || request.auth.uid in resource.data.get('targetCameraOwners', [])
+                    || isPremiumUser()
+                    || isAdmin()
+                  );
+      
+      // Create: Any authenticated user can create requests
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.requesterId;
+      
+      // Update: Requester (for cancellation) or target owners (for responses) or admin
+      allow update: if isAuthenticated() && (
+                      request.auth.uid == resource.data.requesterId
+                      || request.auth.uid in resource.data.get('targetCameraOwners', [])
+                      || isAdmin()
+                    );
+      
+      // Delete: Admin only (for cleanup)
+      allow delete: if isAdmin();
+    }
+    
+    // ============================================
+    // TEMPORARY EVIDENCE MARKERS COLLECTION
+    // ============================================
+    
+    match /temporaryEvidenceMarkers/{markerId} {
+      // Read: Owner or admin
+      allow read: if isOwner(resource.data.ownerId) || isAdmin();
+      
+      // Create: Any authenticated user
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.ownerId;
+      
+      // Update: Owner or admin
+      allow update: if isOwner(resource.data.ownerId) || isAdmin();
+      
+      // Delete: Owner or admin
+      allow delete: if isOwner(resource.data.ownerId) || isAdmin();
+    }
+    
+    // ============================================
+    // NOTIFICATIONS COLLECTION
+    // ============================================
+    
+    match /notifications/{notificationId} {
+      // Read: Owner only
+      allow read: if isOwner(resource.data.userId);
+      
+      // Create: System can create (or admin)
+      allow create: if isAdmin();
+      
+      // Update: Owner can mark as read
+      allow update: if isOwner(resource.data.userId);
+      
+      // Delete: Owner or admin
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+    
+    // ============================================
+    // NOTIFICATION PREFERENCES COLLECTION
+    // ============================================
+    
+    match /notificationPreferences/{userId} {
+      // Read: Owner only
+      allow read: if isOwner(userId);
+      
+      // Write: Owner only
+      allow write: if isOwner(userId);
+    }
+    
+    // ============================================
+    // ARCHIVED REQUESTS COLLECTION (for admin)
+    // ============================================
+    
+    match /archivedRequests/{requestId} {
+      // Read: Admin or original requester
+      allow read: if isAdmin() || (isAuthenticated() && request.auth.uid == resource.data.requesterId);
+      
+      // Write: Admin only
+      allow write: if isAdmin();
+    }
+  }
+}

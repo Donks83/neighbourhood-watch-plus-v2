@@ -1,0 +1,96 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // ============================================
+    // HELPER FUNCTIONS
+    // ============================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // Check file size (max 500MB for videos, 10MB for images)
+    function isValidSize(maxSizeMB) {
+      return request.resource.size < maxSizeMB * 1024 * 1024;
+    }
+    
+    // Check if file is an image
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    // Check if file is a video
+    function isVideo() {
+      return request.resource.contentType.matches('video/.*');
+    }
+    
+    // ============================================
+    // TEMPORARY MARKERS (Dashcam, Phone footage)
+    // ============================================
+    
+    match /temporary-markers/{userId}/{fileName} {
+      // Read: Any authenticated user can view evidence
+      allow read: if isAuthenticated();
+      
+      // Write: Only owner can upload
+      //        Max 500MB per file
+      //        Must be image or video
+      allow write: if isOwner(userId) 
+                   && isValidSize(500)
+                   && (isImage() || isVideo());
+    }
+    
+    // ============================================
+    // FOOTAGE UPLOADS (Camera footage responses)
+    // ============================================
+    
+    match /footage/{userId}/{fileName} {
+      // Read: Any authenticated user can view submitted footage
+      allow read: if isAuthenticated();
+      
+      // Write: Only owner can upload
+      //        Max 500MB per file
+      //        Must be video
+      allow write: if isOwner(userId)
+                   && isValidSize(500)
+                   && isVideo();
+    }
+    
+    // ============================================
+    // CAMERA VERIFICATION PHOTOS
+    // ============================================
+    
+    match /verification-photos/{userId}/{fileName} {
+      // Read: Owner or any authenticated user (for admin review)
+      allow read: if isAuthenticated();
+      
+      // Write: Only owner can upload
+      //        Max 10MB per file
+      //        Must be image
+      allow write: if isOwner(userId)
+                   && isValidSize(10)
+                   && isImage();
+    }
+    
+    // ============================================
+    // USER PROFILE PICTURES
+    // ============================================
+    
+    match /profile-pictures/{userId}/{fileName} {
+      // Read: Anyone can view profile pictures
+      allow read: if true;
+      
+      // Write: Only owner can upload
+      //        Max 5MB per file
+      //        Must be image
+      allow write: if isOwner(userId)
+                   && isValidSize(5)
+                   && isImage();
+    }
+  }
+}
