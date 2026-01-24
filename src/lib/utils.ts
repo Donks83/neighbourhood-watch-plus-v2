@@ -6,6 +6,10 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatCoordinates(lat: number, lng: number, precision: number = 6): string {
+  // Safety check for undefined values
+  if (lat === undefined || lng === undefined || lat === null || lng === null) {
+    return 'Location not available'
+  }
   return `${lat.toFixed(precision)}, ${lng.toFixed(precision)}`
 }
 

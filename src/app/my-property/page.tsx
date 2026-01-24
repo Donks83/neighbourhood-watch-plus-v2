@@ -383,7 +383,9 @@ export default function MyPropertyPage() {
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
                             <h3 className="text-lg font-semibold">{camera.name}</h3>
-                            <VerificationStatusBadge status={camera.verification.status} />
+                            {camera.verification?.status && (
+                              <VerificationStatusBadge status={camera.verification.status} />
+                            )}
                             {camera.status === 'active' ? (
                               <Badge className="bg-green-100 text-green-800">
                                 <Wifi className="w-3 h-3 mr-1" />
@@ -400,11 +402,13 @@ export default function MyPropertyPage() {
                           <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
                             <p className="flex items-center gap-2">
                               <MapPin className="w-4 h-4" />
-                              {formatCoordinates(camera.location.lat, camera.location.lng)}
+                              {camera.location?.lat && camera.location?.lng 
+                                ? formatCoordinates(camera.location.lat, camera.location.lng)
+                                : 'Location not set'}
                             </p>
                             <p className="flex items-center gap-2">
                               <Eye className="w-4 h-4" />
-                              View distance: {camera.fieldOfView.range}m
+                              View distance: {camera.fieldOfView?.range ?? 'Not set'}m
                             </p>
                             <p className="flex items-center gap-2">
                               <Camera className="w-4 h-4" />
@@ -412,7 +416,7 @@ export default function MyPropertyPage() {
                             </p>
                           </div>
 
-                          {camera.verification.status === 'pending' && (
+                          {camera.verification?.status === 'pending' && (
                             <Alert className="mt-4 border-amber-200 bg-amber-50">
                               <Clock className="h-4 w-4 text-amber-600" />
                               <AlertDescription className="text-amber-900 text-sm">
