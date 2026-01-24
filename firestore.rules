@@ -170,6 +170,18 @@ service cloud.firestore {
     }
     
     // ============================================
+    // USER ROLES COLLECTION (for admin system)
+    // ============================================
+    
+    match /user_roles/{userId} {
+      // Read: Owner or admin can read
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Write: Only super admin can assign roles
+      allow write: if isSuperAdmin();
+    }
+    
+    // ============================================
     // ARCHIVED REQUESTS COLLECTION (for admin)
     // ============================================
     

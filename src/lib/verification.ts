@@ -44,11 +44,14 @@ async function submitCameraForVerification(
       throw new Error('Camera not found')
     }
 
+    // Use regular Timestamp for history items (serverTimestamp not allowed in arrays)
+    const now = Timestamp.fromDate(new Date())
+    
     const historyItem: VerificationHistoryItem = {
       id: `submit-${Date.now()}`,
       action: 'submitted',
       performedBy: userId,
-      performedAt: serverTimestamp() as Timestamp,
+      performedAt: now,
       evidence
     }
 
