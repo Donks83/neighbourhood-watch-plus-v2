@@ -35,6 +35,16 @@ export function generateHexagonalGrid(
   if (cameras.length === 0) return []
 
   try {
+    // Validate center coordinates
+    if (!center || 
+        typeof center.lat !== 'number' || 
+        typeof center.lng !== 'number' ||
+        center.lat < -90 || center.lat > 90 ||
+        center.lng < -180 || center.lng > 180) {
+      console.warn('⚠️ Invalid center coordinates for hexagonal grid:', center)
+      return []
+    }
+    
     // Convert center point to H3 cell
     const centerCell = latLngToCell(center.lat, center.lng, HEXAGON_RESOLUTION)
     
@@ -53,6 +63,17 @@ export function generateHexagonalGrid(
     cameras.forEach(camera => {
       // Use display location (fuzzy) for community view, or real location for owner view
       const location = camera.displayLocation || camera.location
+      
+      // Validate coordinates before processing
+      if (!location || 
+          typeof location.lat !== 'number' || 
+          typeof location.lng !== 'number' ||
+          location.lat < -90 || location.lat > 90 ||
+          location.lng < -180 || location.lng > 180) {
+        console.warn('⚠️ Skipping camera with invalid coordinates:', camera.id, location)
+        return
+      }
+      
       const cameraCell = latLngToCell(location.lat, location.lng, HEXAGON_RESOLUTION)
       
       // Only count if this hexagon is in our grid
