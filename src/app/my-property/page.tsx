@@ -17,8 +17,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/auth-context'
 import { getUserCameras, updateCamera, deleteCamera } from '@/lib/firestore'
+import { submitCameraForVerification } from '@/lib/verification'
 import { formatDisplayAddress } from '@/lib/geocoding'
 import { formatCoordinates } from '@/lib/utils'
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
 import type { Location, MapMarker } from '@/types'
 import type { RegisteredCamera, CameraPlacementData } from '@/types/camera'
 
@@ -121,11 +124,29 @@ export default function MyPropertyPage() {
     
     try {
       setIsSavingCamera(true)
-      console.log('💾 Saving camera:', camera)
+      console.log('💾 Saving camera to Firestore:', camera)
       
-      // Camera is saved in the popup component
-      // Just reload cameras here
-      await loadUserCameras()
+      // Save camera to Firestore
+      const cameraData = {
+        ...camera,
+        createdAt: serverTimestamp(),
+        lastUpdated: serverTimestamp()
+      }
+      
+      const docRef = await addDoc(collection(db, 'cameras'), cameraData)
+      console.log('✅ Camera saved to Firestore with ID:', docRef.id)
+      
+      // Submit for verification (adds to verification queue)
+      if (camera.verification?.evidence) {
+        await submitCameraForVerification(
+          docRef.id,
+          user.uid,
+          camera.verification.evidence
+        )
+        console.log('✅ Camera submitted to verification queue')
+      }
+      
+      // Reload cameras to show the new one
       hasLoadedCameras.current = false
       await loadUserCameras()
       
@@ -138,9 +159,10 @@ export default function MyPropertyPage() {
       // Switch to cameras tab to see the new camera
       setActiveTab('cameras')
       
-      console.log('✅ Camera saved successfully')
+      console.log('✅ Camera registration complete!')
     } catch (error) {
-      console.error('❌ Error in handleSaveCamera:', error)
+      console.error('❌ Error saving camera:', error)
+      alert('Failed to save camera. Please try again.')
     } finally {
       setIsSavingCamera(false)
     }
