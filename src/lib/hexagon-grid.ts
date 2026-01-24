@@ -104,8 +104,9 @@ export function generateHexagonalGrid(
       const centerLat = boundaryLocations.reduce((sum, loc) => sum + loc.lat, 0) / boundaryLocations.length
       const centerLng = boundaryLocations.reduce((sum, loc) => sum + loc.lng, 0) / boundaryLocations.length
       
-      // Normalize density score
-      const densityScore = count / maxCameras
+      // Better density scoring: use absolute thresholds instead of just relative max
+      // This prevents 1-3 cameras from showing as "high density" (red)
+      const densityScore = getDensityScore(count, maxCameras)
       
       // Assign color based on density (blue = low, red = high)
       const color = getDensityColor(densityScore)
@@ -128,6 +129,28 @@ export function generateHexagonalGrid(
     console.error('❌ Error generating hexagonal grid:', error)
     return []
   }
+}
+
+/**
+ * Calculate density score using absolute thresholds
+ * This prevents 1-3 cameras from appearing as "high density"
+ */
+function getDensityScore(count: number, maxInArea: number): number {
+  // Use absolute camera count thresholds for more realistic density representation
+  // These thresholds represent what we'd consider low/medium/high density in practice
+  
+  // 1-2 cameras: Low density (0.0 - 0.25)
+  if (count <= 2) return count * 0.125 // Maps to 0.125, 0.25
+  
+  // 3-5 cameras: Medium-low density (0.25 - 0.5)
+  if (count <= 5) return 0.25 + ((count - 2) / 3) * 0.25 // Maps to 0.33, 0.42, 0.5
+  
+  // 6-10 cameras: Medium-high density (0.5 - 0.75)
+  if (count <= 10) return 0.5 + ((count - 5) / 5) * 0.25 // Maps to 0.55-0.75
+  
+  // 11+ cameras: High density (0.75 - 1.0)
+  // Scale up to maxInArea, but cap at 1.0
+  return Math.min(0.75 + ((count - 10) / Math.max(maxInArea - 10, 1)) * 0.25, 1.0)
 }
 
 /**
