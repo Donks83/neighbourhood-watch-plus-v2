@@ -20,7 +20,7 @@ import { getUserCameras, updateCamera, deleteCamera } from '@/lib/firestore'
 import { submitCameraForVerification } from '@/lib/verification'
 import { formatDisplayAddress } from '@/lib/geocoding'
 import { formatCoordinates } from '@/lib/utils'
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, addDoc, serverTimestamp, GeoPoint } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import type { Location, MapMarker } from '@/types'
 import type { RegisteredCamera, CameraPlacementData } from '@/types/camera'
@@ -125,13 +125,22 @@ export default function MyPropertyPage() {
     try {
       setIsSavingCamera(true)
       console.log('💾 Saving camera to Firestore:', camera)
+      console.log('💾 Camera location:', camera.location)
+      console.log('💾 Camera displayLocation:', camera.displayLocation)
       
-      // Save camera to Firestore
+      // Convert Location objects to Firestore GeoPoints
       const cameraData = {
         ...camera,
+        location: new GeoPoint(camera.location.lat, camera.location.lng),
+        displayLocation: new GeoPoint(camera.displayLocation.lat, camera.displayLocation.lng),
         createdAt: serverTimestamp(),
         lastUpdated: serverTimestamp()
       }
+      
+      console.log('💾 Camera data with GeoPoints:', {
+        location: cameraData.location,
+        displayLocation: cameraData.displayLocation
+      })
       
       const docRef = await addDoc(collection(db, 'cameras'), cameraData)
       console.log('✅ Camera saved to Firestore with ID:', docRef.id)
