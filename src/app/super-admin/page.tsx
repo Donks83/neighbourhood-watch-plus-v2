@@ -306,7 +306,7 @@ export default function SuperAdminPage() {
                                 id: user.uid, 
                                 name: user.email 
                               })}
-                              disabled={user.uid === userRole?.userId}
+                              disabled={user.uid === userRole?.uid}
                             >
                               <Trash2 className="h-3 w-3" />
                             </Button>
