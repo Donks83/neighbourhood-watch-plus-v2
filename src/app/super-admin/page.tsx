@@ -58,6 +58,8 @@ interface UserData {
 interface CameraWithOwner extends RegisteredCamera {
   ownerEmail: string
   ownerName: string
+  createdAt: Date  // Explicitly type as Date (overrides Timestamp)
+  lastUpdated: Date  // Explicitly type as Date (overrides Timestamp)
 }
 
 export default function SuperAdminPage() {
