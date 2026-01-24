@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useRef } from 'react'
 import { AlertCircleIcon, CameraIcon, BellIcon, MenuIcon, ShieldIcon, UserIcon, LogOutIcon, SettingsIcon, HomeIcon, ChevronDownIcon, AlertCircle, Shield, Camera, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import Map, { type MapRef } from '@/components/map/map'
 import IncidentReportPanel from '@/components/map/incident-report-panel'
 import TemporaryMarkerRegistration from '@/components/temporary-evidence/temporary-marker-registration'
