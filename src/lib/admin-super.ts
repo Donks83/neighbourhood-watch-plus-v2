@@ -27,9 +27,11 @@ export interface UserData {
   trustScore: number
 }
 
-export interface CameraWithOwner extends RegisteredCamera {
+export interface CameraWithOwner extends Omit<RegisteredCamera, 'createdAt' | 'lastUpdated'> {
   ownerEmail: string
   ownerName: string
+  createdAt: Date
+  lastUpdated: Date
 }
 
 /**

@@ -41,26 +41,10 @@ import {
   getAllCameras, 
   updateUserRole, 
   deleteUser,
-  deleteCamera 
+  deleteCamera,
+  type UserData,
+  type CameraWithOwner
 } from '@/lib/admin-super'
-import type { RegisteredCamera } from '@/types/camera'
-
-interface UserData {
-  uid: string
-  email: string
-  displayName: string
-  role: string
-  createdAt: Date
-  cameraCount: number
-  trustScore: number
-}
-
-interface CameraWithOwner extends Omit<RegisteredCamera, 'createdAt' | 'lastUpdated'> {
-  ownerEmail: string
-  ownerName: string
-  createdAt: Date
-  lastUpdated: Date
-}
 
 export default function SuperAdminPage() {
   const router = useRouter()
