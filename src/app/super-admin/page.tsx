@@ -55,11 +55,11 @@ interface UserData {
   trustScore: number
 }
 
-interface CameraWithOwner extends RegisteredCamera {
+interface CameraWithOwner extends Omit<RegisteredCamera, 'createdAt' | 'lastUpdated'> {
   ownerEmail: string
   ownerName: string
-  createdAt: Date  // Explicitly type as Date (overrides Timestamp)
-  lastUpdated: Date  // Explicitly type as Date (overrides Timestamp)
+  createdAt: Date
+  lastUpdated: Date
 }
 
 export default function SuperAdminPage() {
