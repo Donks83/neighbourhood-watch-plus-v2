@@ -223,6 +223,23 @@ async function findCamerasWithinRadius(
     })
     
     console.log(`🎯 Final result: ${nearbyCameras.length} verified cameras within ${radiusInMeters}m radius`)
+    
+    // Log summary of found cameras
+    if (nearbyCameras.length > 0) {
+      console.log('📋 Cameras that will receive this request:')
+      nearbyCameras.forEach((camera, index) => {
+        const distance = Math.round(getDistance(
+          location.lat,
+          location.lng,
+          camera.location.lat,
+          camera.location.lng
+        ))
+        console.log(`   ${index + 1}. ${camera.name} (${distance}m away) - Owner: ${camera.userEmail}`)
+      })
+    } else {
+      console.log('⚠️ No cameras found within search radius. User may need to increase radius.')
+    }
+    
     return nearbyCameras
     
   } catch (error) {

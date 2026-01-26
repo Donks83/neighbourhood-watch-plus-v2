@@ -103,6 +103,8 @@ export default function IncidentReportPanel({
   const handleFormSubmit = async (data: IncidentFormData) => {
     if (!user) return
     
+    let requestCreated = false
+    
     try {
       // Check rate limit before submission
       const limitCheck = await checkRateLimit(user.uid)
@@ -118,7 +120,10 @@ export default function IncidentReportPanel({
         requestRadius: Number(data.requestRadius)
       })
       
-      // Increment rate limit counter after successful submission
+      // Mark as successfully created
+      requestCreated = true
+      
+      // Increment rate limit counter ONLY after successful submission
       await incrementRequestCount(user.uid)
       
       // Update local rate limit status
@@ -130,8 +135,16 @@ export default function IncidentReportPanel({
       reset()
       onClose()
     } catch (error) {
-      console.error('Error submitting incident report:', error)
-      alert('Failed to submit request. Please try again.')
+      console.error('❌ Error submitting incident report:', error)
+      
+      // Only show alert if request was not created
+      if (!requestCreated) {
+        alert('❌ Failed to submit footage request. Please try again.')
+      } else {
+        // Request was created but rate limit update failed - this is less critical
+        console.warn('⚠️ Request created but rate limit update failed')
+        alert('⚠️ Request submitted but there was an issue updating your rate limit. Please contact support if this persists.')
+      }
     }
   }
 
