@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { 
   Bell, 
   FileVideo, 
@@ -17,12 +17,17 @@ import {
   Eye,
   Archive,
   RotateCcw,
-  Trash2
+  Trash2,
+  Filter,
+  XCircle,
+  Search
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { formatDate, formatDateTime, formatRelativeTime } from '@/lib/date-utils'
 import { useAuth } from '@/contexts/auth-context'
@@ -68,6 +73,14 @@ export default function RequestManagement({ isOpen, onClose }: RequestManagement
   const [selectedCameraResponse, setSelectedCameraResponse] = useState<CameraResponse | null>(null)
   const [showFootageViewer, setShowFootageViewer] = useState(false)
   const [selectedViewerRequest, setSelectedViewerRequest] = useState<FootageRequest | null>(null)
+  
+  // Filter states
+  const [filterStatus, setFilterStatus] = useState<string>('all')
+  const [filterPriority, setFilterPriority] = useState<string>('all')
+  const [filterDateFrom, setFilterDateFrom] = useState<string>('')
+  const [filterDateTo, setFilterDateTo] = useState<string>('')
+  const [filterReference, setFilterReference] = useState<string>('')
+  const [showFilters, setShowFilters] = useState(false)
   
   // Privacy warning modal state
   const [showPrivacyWarning, setShowPrivacyWarning] = useState(false)
@@ -136,6 +149,85 @@ export default function RequestManagement({ isOpen, onClose }: RequestManagement
       loadData()
     }
   }, [isOpen, user, loadData])
+
+  // Filter logic for received and sent requests
+  const filteredReceivedRequests = useMemo(() => {
+    return receivedRequests.filter(request => {
+      // Status filter
+      if (filterStatus !== 'all' && request.status !== filterStatus) return false
+      
+      // Priority filter
+      if (filterPriority !== 'all' && request.priority !== filterPriority) return false
+      
+      // Date range filter
+      if (filterDateFrom) {
+        const fromDate = new Date(filterDateFrom)
+        if (request.incidentDate < fromDate) return false
+      }
+      if (filterDateTo) {
+        const toDate = new Date(filterDateTo)
+        toDate.setHours(23, 59, 59, 999) // End of day
+        if (request.incidentDate > toDate) return false
+      }
+      
+      // Reference number search
+      if (filterReference) {
+        const searchTerm = filterReference.toLowerCase()
+        if (!request.referenceNumber?.toLowerCase().includes(searchTerm)) return false
+      }
+      
+      return true
+    })
+  }, [receivedRequests, filterStatus, filterPriority, filterDateFrom, filterDateTo, filterReference])
+
+  const filteredSentRequests = useMemo(() => {
+    return sentRequests.filter(request => {
+      // Status filter
+      if (filterStatus !== 'all' && request.status !== filterStatus) return false
+      
+      // Priority filter
+      if (filterPriority !== 'all' && request.priority !== filterPriority) return false
+      
+      // Date range filter
+      if (filterDateFrom) {
+        const fromDate = new Date(filterDateFrom)
+        if (request.incidentDate < fromDate) return false
+      }
+      if (filterDateTo) {
+        const toDate = new Date(filterDateTo)
+        toDate.setHours(23, 59, 59, 999) // End of day
+        if (request.incidentDate > toDate) return false
+      }
+      
+      // Reference number search
+      if (filterReference) {
+        const searchTerm = filterReference.toLowerCase()
+        if (!request.referenceNumber?.toLowerCase().includes(searchTerm)) return false
+      }
+      
+      return true
+    })
+  }, [sentRequests, filterStatus, filterPriority, filterDateFrom, filterDateTo, filterReference])
+
+  // Count active filters
+  const activeFilterCount = useMemo(() => {
+    let count = 0
+    if (filterStatus !== 'all') count++
+    if (filterPriority !== 'all') count++
+    if (filterDateFrom) count++
+    if (filterDateTo) count++
+    if (filterReference) count++
+    return count
+  }, [filterStatus, filterPriority, filterDateFrom, filterDateTo, filterReference])
+
+  // Clear all filters
+  const clearAllFilters = () => {
+    setFilterStatus('all')
+    setFilterPriority('all')
+    setFilterDateFrom('')
+    setFilterDateTo('')
+    setFilterReference('')
+  }
 
   // Handle camera response
   const handleCameraResponse = async (
@@ -388,6 +480,147 @@ export default function RequestManagement({ isOpen, onClose }: RequestManagement
           </div>
         </div>
 
+        {/* Filters Section - Only show for Received and Sent tabs */}
+        {(activeTab === 'received' || activeTab === 'sent') && (
+          <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+            {/* Filter Toggle Button */}
+            <div className="px-6 py-3 flex items-center justify-between">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center gap-2"
+              >
+                <Filter className="w-4 h-4" />
+                Filters
+                {activeFilterCount > 0 && (
+                  <Badge variant="default" className="ml-1 h-5 px-2">
+                    {activeFilterCount}
+                  </Badge>
+                )}
+                {showFilters ? (
+                  <ChevronUp className="w-4 h-4 ml-1" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 ml-1" />
+                )}
+              </Button>
+              
+              {activeFilterCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearAllFilters}
+                  className="flex items-center gap-2 text-red-600 hover:text-red-700"
+                >
+                  <XCircle className="w-4 h-4" />
+                  Clear All
+                </Button>
+              )}
+            </div>
+
+            {/* Expanded Filters */}
+            {showFilters && (
+              <div className="px-6 pb-4 space-y-4">
+                {/* Reference Number Search */}
+                <div>
+                  <Label htmlFor="filter-reference" className="text-xs font-medium mb-1 block">
+                    Search by Reference Number
+                  </Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      id="filter-reference"
+                      type="text"
+                      placeholder="e.g., INC-123..."
+                      value={filterReference}
+                      onChange={(e) => setFilterReference(e.target.value)}
+                      className="pl-9 h-9 text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Status Filter */}
+                  <div>
+                    <Label htmlFor="filter-status" className="text-xs font-medium mb-1 block">
+                      Status
+                    </Label>
+                    <select
+                      id="filter-status"
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className="w-full h-9 px-3 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900"
+                    >
+                      <option value="all">All Statuses</option>
+                      <option value="pending">Pending</option>
+                      <option value="approved">Approved</option>
+                      <option value="denied">Denied</option>
+                      <option value="expired">Expired</option>
+                      <option value="cancelled">Cancelled</option>
+                      <option value="fulfilled">Fulfilled</option>
+                    </select>
+                  </div>
+
+                  {/* Priority Filter */}
+                  <div>
+                    <Label htmlFor="filter-priority" className="text-xs font-medium mb-1 block">
+                      Priority
+                    </Label>
+                    <select
+                      id="filter-priority"
+                      value={filterPriority}
+                      onChange={(e) => setFilterPriority(e.target.value)}
+                      className="w-full h-9 px-3 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900"
+                    >
+                      <option value="all">All Priorities</option>
+                      <option value="urgent">Urgent</option>
+                      <option value="high">High</option>
+                      <option value="medium">Medium</option>
+                      <option value="low">Low</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Date Range */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="filter-date-from" className="text-xs font-medium mb-1 block">
+                      From Date
+                    </Label>
+                    <Input
+                      id="filter-date-from"
+                      type="date"
+                      value={filterDateFrom}
+                      onChange={(e) => setFilterDateFrom(e.target.value)}
+                      max={new Date().toISOString().split('T')[0]}
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="filter-date-to" className="text-xs font-medium mb-1 block">
+                      To Date
+                    </Label>
+                    <Input
+                      id="filter-date-to"
+                      type="date"
+                      value={filterDateTo}
+                      onChange={(e) => setFilterDateTo(e.target.value)}
+                      max={new Date().toISOString().split('T')[0]}
+                      min={filterDateFrom}
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Results Count */}
+                <div className="text-xs text-gray-600 dark:text-gray-400 pt-2 border-t border-gray-200 dark:border-gray-700">
+                  Showing {activeTab === 'received' ? filteredReceivedRequests.length : filteredSentRequests.length} of {activeTab === 'received' ? receivedRequests.length : sentRequests.length} requests
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6" style={{ height: 'calc(100% - 144px)' }}>
           {isLoading ? (
@@ -400,18 +633,21 @@ export default function RequestManagement({ isOpen, onClose }: RequestManagement
               {/* Received Requests Tab */}
               {activeTab === 'received' && (
                 <div className="space-y-4">
-                  {receivedRequests.length === 0 ? (
+                  {filteredReceivedRequests.length === 0 ? (
                     <div className="text-center py-8">
                       <Bell className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                       <h3 className="font-medium text-gray-900 dark:text-white mb-2">
-                        No requests received
+                        {receivedRequests.length === 0 ? 'No requests received' : 'No requests match filters'}
                       </h3>
                       <p className="text-sm text-gray-500">
-                        You'll be notified when someone needs footage from your cameras.
+                        {receivedRequests.length === 0 
+                          ? "You'll be notified when someone needs footage from your cameras."
+                          : 'Try adjusting your filters to see more results.'
+                        }
                       </p>
                     </div>
                   ) : (
-                    receivedRequests.map((request) => (
+                    filteredReceivedRequests.map((request) => (
                       <Card key={request.id} className="overflow-hidden">
                         <CardHeader 
                           className="cursor-pointer"
@@ -599,18 +835,21 @@ export default function RequestManagement({ isOpen, onClose }: RequestManagement
               {/* Sent Requests Tab */}
               {activeTab === 'sent' && (
                 <div className="space-y-4">
-                  {sentRequests.length === 0 ? (
+                  {filteredSentRequests.length === 0 ? (
                     <div className="text-center py-8">
                       <FileVideo className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                       <h3 className="font-medium text-gray-900 dark:text-white mb-2">
-                        No requests sent
+                        {sentRequests.length === 0 ? 'No requests sent' : 'No requests match filters'}
                       </h3>
                       <p className="text-sm text-gray-500">
-                        Your footage requests will appear here.
+                        {sentRequests.length === 0
+                          ? 'Your footage requests will appear here.'
+                          : 'Try adjusting your filters to see more results.'
+                        }
                       </p>
                     </div>
                   ) : (
-                    sentRequests.map((request) => (
+                    filteredSentRequests.map((request) => (
                       <Card key={request.id}>
                         <CardHeader>
                           <div className="flex items-start justify-between">
