@@ -146,6 +146,7 @@ export default function HomePage() {
         user.uid,
         user.email!,
         {
+          referenceNumber: data.referenceNumber,
           incidentType: data.incidentType,
           incidentDate: incidentDate,
           incidentTime: incidentDate.toLocaleTimeString(),

@@ -8,6 +8,7 @@ export interface FootageRequest {
   id: string
   
   // Request Details
+  referenceNumber?: string // Format: INC-{timestamp}-{random} or user-provided
   incidentType: string
   incidentDate: Date | Timestamp
   incidentTime: string
@@ -134,6 +135,7 @@ export interface RequestNotification {
 
 // Helper type for creating new requests
 export interface CreateFootageRequestInput {
+  referenceNumber?: string
   incidentType: string
   incidentDate: Date
   incidentTime: string

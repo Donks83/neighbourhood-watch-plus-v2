@@ -52,6 +52,7 @@ export interface Notification {
 }
 
 export interface IncidentFormData {
+  referenceNumber?: string
   incidentType: FootageRequest['incidentType']
   description: string
   incidentDateTime: string  // ISO string format for form handling

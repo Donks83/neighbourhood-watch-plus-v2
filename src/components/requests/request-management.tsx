@@ -431,6 +431,11 @@ export default function RequestManagement({ isOpen, onClose }: RequestManagement
                                 </Badge>
                               </div>
                               <CardDescription className="text-xs">
+                                {request.referenceNumber && (
+                                  <div className="mb-1 text-blue-600 dark:text-blue-400 font-mono">
+                                    Ref: {request.referenceNumber}
+                                  </div>
+                                )}
                                 <div className="flex items-center gap-4 mt-1">
                                   <span className="flex items-center gap-1">
                                     <Calendar className="w-3 h-3" />
@@ -620,6 +625,11 @@ export default function RequestManagement({ isOpen, onClose }: RequestManagement
                                 </Badge>
                               </div>
                               <CardDescription className="text-xs">
+                                {request.referenceNumber && (
+                                  <div className="text-blue-600 dark:text-blue-400 font-mono mb-1">
+                                    Ref: {request.referenceNumber}
+                                  </div>
+                                )}
                                 {formatDate(request.incidentDate)} at {request.incidentTime}
                               </CardDescription>
                             </div>

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { CalendarIcon, MapPinIcon, AlertTriangleIcon, XIcon, ShieldAlertIcon } from 'lucide-react'
+import { CalendarIcon, MapPinIcon, AlertTriangleIcon, XIcon, ShieldAlertIcon, RefreshCwIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -14,7 +14,15 @@ import { formatCoordinates, cn } from '@/lib/utils'
 import { checkRateLimit, incrementRequestCount, type RateLimitStatus } from '@/lib/rate-limiting'
 import { useAuth } from '@/contexts/auth-context'
 
+// Generate incident reference number
+const generateReferenceNumber = (): string => {
+  const timestamp = Date.now()
+  const random = Math.random().toString(36).substring(2, 8).toUpperCase()
+  return `INC-${timestamp}-${random}`
+}
+
 const incidentSchema = z.object({
+  referenceNumber: z.string().optional(),
   incidentType: z.enum(['vehicle_accident', 'theft', 'vandalism', 'suspicious_activity', 'other']),
   description: z.string().min(10, 'Description must be at least 10 characters'),
   incidentDateTime: z.string(),
@@ -277,6 +285,33 @@ export default function IncidentReportPanel({
               {errors.incidentType && (
                 <p className="text-red-500 text-sm mt-1">{errors.incidentType.message}</p>
               )}
+            </div>
+
+            {/* Reference Number (Optional) */}
+            <div>
+              <Label htmlFor="referenceNumber" className="text-sm font-medium mb-2 block">
+                Incident Reference Number (Optional)
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  {...register('referenceNumber')}
+                  placeholder="e.g., INC-1234567890-ABC123 or your own reference"
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setValue('referenceNumber', generateReferenceNumber())}
+                  className="flex items-center gap-1"
+                >
+                  <RefreshCwIcon className="w-3 h-3" />
+                  Generate
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Auto-generate a unique reference or enter your own (e.g., police report number)
+              </p>
             </div>
 
             {/* Description */}
