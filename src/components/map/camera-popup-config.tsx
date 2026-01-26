@@ -20,6 +20,8 @@ const cameraConfigSchema = z.object({
   type: z.enum(['doorbell', 'security', 'other']), // Removed dash and indoor as requested
   resolution: z.enum(['720p', '1080p', '4K', 'Other']),
   nightVision: z.boolean(),
+  brand: z.string().optional(),
+  model: z.string().optional(),
   viewDistance: z.number().min(1).max(40) // Changed to 1-40m as requested
 })
 
@@ -65,6 +67,8 @@ export default function CameraPopupConfig({
       type: placementData.type === 'dash' || placementData.type === 'indoor' ? 'other' : placementData.type,
       resolution: '1080p',
       nightVision: true,
+      brand: '',
+      model: '',
       viewDistance: 12 // Default to 12m
     },
     mode: 'onChange'
@@ -126,8 +130,8 @@ export default function CameraPopupConfig({
         specifications: {
           resolution: data.resolution,
           nightVision: data.nightVision,
-          brand: '',
-          model: ''
+          brand: data.brand || '',
+          model: data.model || ''
         },
         privacySettings: {
           shareWithCommunity: true,
@@ -289,6 +293,39 @@ export default function CameraPopupConfig({
                   <input type="checkbox" {...register('nightVision')} />
                   <span>Has night vision</span>
                 </label>
+              </div>
+            </div>
+
+            {/* Brand & Model */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Brand (Optional)</Label>
+                <select {...register('brand')} className="w-full p-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800">
+                  <option value="">Select brand...</option>
+                  <option value="Ring">Ring</option>
+                  <option value="Nest">Nest (Google)</option>
+                  <option value="Arlo">Arlo</option>
+                  <option value="Blink">Blink (Amazon)</option>
+                  <option value="Eufy">Eufy</option>
+                  <option value="Hikvision">Hikvision</option>
+                  <option value="Dahua">Dahua</option>
+                  <option value="Reolink">Reolink</option>
+                  <option value="Wyze">Wyze</option>
+                  <option value="TP-Link">TP-Link</option>
+                  <option value="Swann">Swann</option>
+                  <option value="Lorex">Lorex</option>
+                  <option value="Unifi">Unifi</option>
+                  <option value="Generic">Generic/No Brand</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Model (Optional)</Label>
+                <Input
+                  {...register('model')}
+                  placeholder="e.g., Video Doorbell Pro"
+                  className="text-sm"
+                />
               </div>
             </div>
 

@@ -30,7 +30,9 @@ export default function CameraEditModal({
     requireApproval: camera.privacySettings.requireApproval,
     maxRequestRadius: camera.privacySettings.maxRequestRadius,
     resolution: camera.specifications?.resolution || 'HD',
-    nightVision: camera.specifications?.nightVision || false
+    nightVision: camera.specifications?.nightVision || false,
+    brand: camera.specifications?.brand || '',
+    model: camera.specifications?.model || ''
   })
 
   const [hasChanges, setHasChanges] = useState(false)
@@ -44,7 +46,9 @@ export default function CameraEditModal({
       requireApproval: camera.privacySettings.requireApproval,
       maxRequestRadius: camera.privacySettings.maxRequestRadius,
       resolution: camera.specifications?.resolution || 'HD',
-      nightVision: camera.specifications?.nightVision || false
+      nightVision: camera.specifications?.nightVision || false,
+      brand: camera.specifications?.brand || '',
+      model: camera.specifications?.model || ''
     })
     setHasChanges(false)
   }, [camera])
@@ -58,7 +62,9 @@ export default function CameraEditModal({
       requireApproval: camera.privacySettings.requireApproval,
       maxRequestRadius: camera.privacySettings.maxRequestRadius,
       resolution: camera.specifications?.resolution || 'HD',
-      nightVision: camera.specifications?.nightVision || false
+      nightVision: camera.specifications?.nightVision || false,
+      brand: camera.specifications?.brand || '',
+      model: camera.specifications?.model || ''
     }
     
     const isDifferent = JSON.stringify(formData) !== JSON.stringify(originalData)
@@ -79,7 +85,9 @@ export default function CameraEditModal({
         specifications: {
           ...camera.specifications,
           resolution: formData.resolution,
-          nightVision: formData.nightVision
+          nightVision: formData.nightVision,
+          brand: formData.brand,
+          model: formData.model
         }
       }
 
@@ -240,6 +248,44 @@ export default function CameraEditModal({
                     <option value="4K">4K (2160p)</option>
                     <option value="8K">8K (4320p)</option>
                   </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="brand">Brand</Label>
+                    <select 
+                      id="brand"
+                      value={formData.brand} 
+                      onChange={(e) => setFormData(prev => ({ ...prev, brand: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Select brand...</option>
+                      <option value="Ring">Ring</option>
+                      <option value="Nest">Nest (Google)</option>
+                      <option value="Arlo">Arlo</option>
+                      <option value="Blink">Blink (Amazon)</option>
+                      <option value="Eufy">Eufy</option>
+                      <option value="Hikvision">Hikvision</option>
+                      <option value="Dahua">Dahua</option>
+                      <option value="Reolink">Reolink</option>
+                      <option value="Wyze">Wyze</option>
+                      <option value="TP-Link">TP-Link</option>
+                      <option value="Swann">Swann</option>
+                      <option value="Lorex">Lorex</option>
+                      <option value="Unifi">Unifi</option>
+                      <option value="Generic">Generic/No Brand</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="model">Model</Label>
+                    <Input
+                      id="model"
+                      value={formData.model}
+                      onChange={(e) => setFormData(prev => ({ ...prev, model: e.target.value }))}
+                      placeholder="e.g., Video Doorbell Pro"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4">
