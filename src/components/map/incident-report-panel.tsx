@@ -244,110 +244,101 @@ export default function IncidentReportPanel({
         {/* Panel Content - Scrollable */}
         <div className="flex-1 overflow-y-auto px-3 py-3">
           <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-3">
-            {/* Location Display */}
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <MapPinIcon className="w-3.5 h-3.5 text-gray-500" />
-                <Label className="text-sm font-medium">Incident Location</Label>
+            {/* Location Display - Compact */}
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-2">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <MapPinIcon className="w-3 h-3 text-gray-500" />
+                <Label className="text-xs font-medium">Location</Label>
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
+              <div className="text-xs text-gray-600 dark:text-gray-400">
                 {formatCoordinates(location.lat, location.lng)}
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                Click a different location on the map to change
               </div>
             </div>
 
-            {/* Incident Type */}
+            {/* Incident Type - Compact Radio */}
             <div>
-              <Label htmlFor="incidentType" className="text-xs font-medium mb-1.5 block">
-                What happened? <span className="text-red-500">*</span>
+              <Label htmlFor="incidentType" className="text-xs font-medium mb-1 block">
+                Incident Type <span className="text-red-500">*</span>
               </Label>
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 {INCIDENT_TYPES.map((type) => (
                   <label
                     key={type.value}
-                    className="flex items-start gap-2 p-2 rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
+                    className="flex items-center gap-2 p-1.5 rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
                   >
                     <input
                       type="radio"
                       value={type.value}
                       {...register('incidentType')}
-                      className="mt-0.5"
+                      className="flex-shrink-0"
                     />
-                    <div className="flex-1">
-                      <div className="font-medium text-xs">{type.label}</div>
-                      <div className="text-xs text-gray-500">{type.description}</div>
-                    </div>
+                    <span className="text-xs font-medium">{type.label}</span>
                   </label>
                 ))}
               </div>
               {errors.incidentType && (
-                <p className="text-red-500 text-xs mt-1">{errors.incidentType.message}</p>
+                <p className="text-red-500 text-xs mt-0.5">{errors.incidentType.message}</p>
               )}
             </div>
 
-            {/* Reference Number (Optional) */}
+            {/* Reference Number (Optional) - Compact */}
             <div>
-              <Label htmlFor="referenceNumber" className="text-xs font-medium mb-1 block">
+              <Label htmlFor="referenceNumber" className="text-xs font-medium mb-0.5 block">
                 Reference # (Optional)
               </Label>
-              <div className="flex gap-1.5">
+              <div className="flex gap-1">
                 <Input
                   {...register('referenceNumber')}
                   placeholder="e.g., INC-123..."
-                  className="flex-1 text-xs h-8"
+                  className="flex-1 text-xs h-7 px-2"
                 />
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => setValue('referenceNumber', generateReferenceNumber())}
-                  className="flex items-center gap-1 h-8 px-2"
+                  className="h-7 px-2"
                 >
                   <RefreshCwIcon className="w-3 h-3" />
-                  Gen
                 </Button>
               </div>
             </div>
 
-            {/* Description */}
+            {/* Description - Compact */}
             <div>
-              <Label htmlFor="description" className="text-xs font-medium mb-1 block">
+              <Label htmlFor="description" className="text-xs font-medium mb-0.5 block">
                 Description <span className="text-red-500">*</span>
               </Label>
               <Textarea
                 {...register('description')}
-                placeholder="Details about the incident..."
+                placeholder="Brief details..."
                 rows={2}
-                className="resize-none text-xs"
+                className="resize-none text-xs p-2"
               />
               {errors.description && (
-                <p className="text-red-500 text-xs mt-1">{errors.description.message}</p>
+                <p className="text-red-500 text-xs mt-0.5">{errors.description.message}</p>
               )}
             </div>
 
-            {/* Date & Time - Improved */}
+            {/* Date & Time - Compact */}
             <div>
-              <Label className="text-sm font-medium mb-3 block">
-                When did this happen? <span className="text-red-500">*</span>
+              <Label className="text-xs font-medium mb-1 block">
+                When? <span className="text-red-500">*</span>
               </Label>
               
-              {/* Quick Time Presets */}
-              <div className="mb-4">
-                <div className="text-xs text-gray-500 mb-2">Quick options:</div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="text-xs"
-                    onClick={() => {
-                      const now = new Date()
-                      setValue('incidentDateTime', now.toISOString())
-                    }}
-                  >
-                    Just now
+              {/* Quick Time Presets - Compact */}
+              <div className="flex flex-wrap gap-1 mb-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-6 px-2"
+                  onClick={() => {
+                    const now = new Date()
+                    setValue('incidentDateTime', now.toISOString())
+                  }}
+                >
+                  Now
                   </Button>
                   <Button
                     type="button"

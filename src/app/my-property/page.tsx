@@ -40,6 +40,7 @@ export default function MyPropertyPage() {
   const [popupPosition, setPopupPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
   const [pendingCameraPlacement, setPendingCameraPlacement] = useState<CameraPlacementData | null>(null)
   const [isSavingCamera, setIsSavingCamera] = useState(false)
+  const [tempViewDistance, setTempViewDistance] = useState<number>(12) // For live preview circle
   
   // Camera editing state
   const [editingCamera, setEditingCamera] = useState<RegisteredCamera | null>(null)
@@ -179,6 +180,7 @@ export default function MyPropertyPage() {
 
   // Handle view distance change (for real-time map updates)
   const handleViewDistanceChange = (distance: number) => {
+    setTempViewDistance(distance) // Update the visible circle radius
     if (placementData) {
       const updated = {
         ...placementData,
@@ -509,7 +511,7 @@ export default function MyPropertyPage() {
                           location: placementData.location,
                           type: 'camera'
                         }] : []}
-                        temporaryMarkerRadius={0}
+                        temporaryMarkerRadius={tempViewDistance}
                         showHeatmap={false}
                         showCameraMarkers={false}
                         registeredCameras={userCameras}
