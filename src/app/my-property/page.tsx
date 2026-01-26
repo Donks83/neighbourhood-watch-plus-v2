@@ -94,6 +94,7 @@ export default function MyPropertyPage() {
       setPlacementData(newPlacement)
       setPendingCameraPlacement(newPlacement)
       setIsConfigPopupOpen(true)
+      setTempViewDistance(12) // Set initial circle radius
       
       // Center the popup on screen
       const popupX = (window.innerWidth - 320) / 2
@@ -165,6 +166,7 @@ export default function MyPropertyPage() {
       setIsPlacingCamera(false)
       setPlacementData(null)
       setPendingCameraPlacement(null)
+      setTempViewDistance(12) // Reset to default
       
       // Switch to cameras tab to see the new camera
       setActiveTab('cameras')
@@ -209,6 +211,7 @@ export default function MyPropertyPage() {
     setPlacementData(null)
     setPendingCameraPlacement(null)
     setIsConfigPopupOpen(false)
+    setTempViewDistance(12) // Reset to default
     setActiveTab('cameras')
   }
 
@@ -511,6 +514,7 @@ export default function MyPropertyPage() {
                           location: placementData.location,
                           type: 'camera'
                         }] : []}
+                        temporaryMarkerLocation={placementData?.location}
                         temporaryMarkerRadius={tempViewDistance}
                         showHeatmap={false}
                         showCameraMarkers={false}
