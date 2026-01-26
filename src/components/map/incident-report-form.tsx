@@ -62,7 +62,7 @@ export default function IncidentReportForm({
     defaultValues: {
       incidentType: 'other',
       description: '',
-      incidentDateTime: new Date(), // Use Date object, react-hook-form will handle conversion
+      incidentDateTime: new Date().toISOString(), // Use ISO string for consistency
       requestRadius: parseInt(process.env.NEXT_PUBLIC_DEFAULT_REQUEST_RADIUS || '200'),
     },
     mode: 'onChange'
@@ -74,9 +74,8 @@ export default function IncidentReportForm({
     try {
       await onSubmit({
         ...data,
-        incidentDateTime: new Date(data.incidentDateTime),
         requestRadius: Number(data.requestRadius)
-      } as IncidentFormData)
+      })
       reset()
       onClose()
     } catch (error) {
@@ -186,7 +185,7 @@ export default function IncidentReportForm({
                   className="text-xs"
                   onClick={() => {
                     const now = new Date()
-                    setValue('incidentDateTime', now)
+                    setValue('incidentDateTime', now.toISOString())
                   }}
                 >
                   Now
@@ -198,7 +197,7 @@ export default function IncidentReportForm({
                   className="text-xs"
                   onClick={() => {
                     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
-                    setValue('incidentDateTime', oneHourAgo)
+                    setValue('incidentDateTime', oneHourAgo.toISOString())
                   }}
                 >
                   1 Hour Ago
@@ -211,7 +210,7 @@ export default function IncidentReportForm({
                   onClick={() => {
                     const today = new Date()
                     today.setHours(9, 0, 0, 0) // 9 AM today
-                    setValue('incidentDateTime', today)
+                    setValue('incidentDateTime', today.toISOString())
                   }}
                 >
                   This Morning
