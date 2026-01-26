@@ -115,9 +115,8 @@ export default function IncidentReportPanel({
       // Submit the request
       await onSubmit({
         ...data,
-        incidentDateTime: new Date(data.incidentDateTime),
         requestRadius: Number(data.requestRadius)
-      } as IncidentFormData)
+      })
       
       // Increment rate limit counter after successful submission
       await incrementRequestCount(user.uid)
