@@ -138,14 +138,17 @@ export default function HomePage() {
         'other': 'low'
       }
       
+      // Convert ISO string back to Date for processing
+      const incidentDate = new Date(data.incidentDateTime)
+      
       // Create the footage request in Firestore
       const footageRequest = await createFootageRequest(
         user.uid,
         user.email!,
         {
           incidentType: data.incidentType,
-          incidentDate: data.incidentDateTime,
-          incidentTime: data.incidentDateTime.toLocaleTimeString(),
+          incidentDate: incidentDate,
+          incidentTime: incidentDate.toLocaleTimeString(),
           description: data.description,
           incidentLocation: selectedLocation,
           searchRadius: data.requestRadius,

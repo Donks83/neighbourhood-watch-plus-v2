@@ -54,7 +54,7 @@ export interface Notification {
 export interface IncidentFormData {
   incidentType: FootageRequest['incidentType']
   description: string
-  incidentDateTime: Date
+  incidentDateTime: string  // ISO string format for form handling
   requestRadius: number
 }
 
