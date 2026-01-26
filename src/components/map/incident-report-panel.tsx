@@ -339,110 +339,61 @@ export default function IncidentReportPanel({
                   }}
                 >
                   Now
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="text-xs"
-                    onClick={() => {
-                      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
-                      setValue('incidentDateTime', oneHourAgo.toISOString())
-                    }}
-                  >
-                    1 hour ago
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="text-xs"
-                    onClick={() => {
-                      const thisMorning = new Date()
-                      thisMorning.setHours(8, 0, 0, 0)
-                      setValue('incidentDateTime', thisMorning.toISOString())
-                    }}
-                  >
-                    This morning
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="text-xs"
-                    onClick={() => {
-                      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
-                      yesterday.setHours(18, 0, 0, 0)
-                      setValue('incidentDateTime', yesterday.toISOString())
-                    }}
-                  >
-                    Yesterday evening
-                  </Button>
-                </div>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-6 px-2"
+                  onClick={() => {
+                    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+                    setValue('incidentDateTime', oneHourAgo.toISOString())
+                  }}
+                >
+                  1hr ago
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-6 px-2"
+                  onClick={() => {
+                    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
+                    setValue('incidentDateTime', yesterday.toISOString())
+                  }}
+                >
+                  Yesterday
+                </Button>
               </div>
               
-              {/* Manual Date/Time Selection */}
-              <div className="space-y-3">
-                <div>
-                  <Label className="text-xs text-gray-600 mb-1 block">Date</Label>
-                  <div className="flex items-center gap-2">
-                    <CalendarIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                    <Input
-                      type="date"
-                      value={watch('incidentDateTime') ? new Date(watch('incidentDateTime')).toISOString().split('T')[0] : ''}
-                      onChange={(e) => {
-                        const currentDateTime = watch('incidentDateTime')
-                        const currentDate = currentDateTime ? new Date(currentDateTime) : new Date()
-                        const newDate = new Date(e.target.value)
-                        newDate.setHours(currentDate.getHours(), currentDate.getMinutes(), 0, 0)
-                        setValue('incidentDateTime', newDate.toISOString())
-                      }}
-                      className="flex-1"
-                      max={new Date().toISOString().split('T')[0]} // Can't select future dates
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <Label className="text-xs text-gray-600 mb-1 block">Time</Label>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 text-gray-400 flex-shrink-0 flex items-center justify-center text-xs">🕐</div>
-                    <Input
-                      type="time"
-                      value={watch('incidentDateTime') ? new Date(watch('incidentDateTime')).toTimeString().slice(0, 5) : ''}
-                      onChange={(e) => {
-                        const currentDateTime = watch('incidentDateTime')
-                        const currentDate = currentDateTime ? new Date(currentDateTime) : new Date()
-                        const [hours, minutes] = e.target.value.split(':').map(Number)
-                        currentDate.setHours(hours, minutes, 0, 0)
-                        setValue('incidentDateTime', currentDate.toISOString())
-                      }}
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
+              {/* Manual Date/Time - Compact */}
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  type="date"
+                  value={watch('incidentDateTime') ? new Date(watch('incidentDateTime')).toISOString().split('T')[0] : ''}
+                  onChange={(e) => {
+                    const currentDateTime = watch('incidentDateTime')
+                    const currentDate = currentDateTime ? new Date(currentDateTime) : new Date()
+                    const newDate = new Date(e.target.value)
+                    newDate.setHours(currentDate.getHours(), currentDate.getMinutes(), 0, 0)
+                    setValue('incidentDateTime', newDate.toISOString())
+                  }}
+                  className="text-xs h-7 px-2"
+                  max={new Date().toISOString().split('T')[0]}
+                />
+                <Input
+                  type="time"
+                  value={watch('incidentDateTime') ? new Date(watch('incidentDateTime')).toTimeString().slice(0, 5) : ''}
+                  onChange={(e) => {
+                    const currentDateTime = watch('incidentDateTime')
+                    const currentDate = currentDateTime ? new Date(currentDateTime) : new Date()
+                    const [hours, minutes] = e.target.value.split(':').map(Number)
+                    currentDate.setHours(hours, minutes, 0, 0)
+                    setValue('incidentDateTime', currentDate.toISOString())
+                  }}
+                  className="text-xs h-7 px-2"
+                />
               </div>
-              
-              {/* Current Selection Display */}
-              <div className="mt-3 p-2 bg-gray-50 dark:bg-gray-800 rounded text-sm">
-                <span className="text-gray-500">Selected time: </span>
-                <span className="font-medium">
-                  {watch('incidentDateTime') ? 
-                    new Date(watch('incidentDateTime')).toLocaleDateString('en-GB', {
-                      weekday: 'short',
-                      year: 'numeric', 
-                      month: 'short', 
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    }) : 'Not selected'
-                  }
-                </span>
-              </div>
-              
-              {errors.incidentDateTime && (
-                <p className="text-red-500 text-sm mt-1">{errors.incidentDateTime.message}</p>
-              )}
             </div>
 
             {/* Request Radius with Real-time Map Update */}
