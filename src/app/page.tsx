@@ -725,6 +725,20 @@ export default function HomePage() {
                       )}
                       
                       <div className="border-t border-gray-200 dark:border-gray-700 mt-1 pt-1">
+                        <Link href="/settings" className="block">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowUserMenu(false)}
+                            className="w-full justify-start px-3 py-2 text-sm"
+                          >
+                            <SettingsIcon className="w-4 h-4 mr-2" />
+                            Settings
+                          </Button>
+                        </Link>
+                      </div>
+                      
+                      <div className="border-t border-gray-200 dark:border-gray-700 pt-1">
                         <Button
                           variant="ghost"
                           size="sm"
