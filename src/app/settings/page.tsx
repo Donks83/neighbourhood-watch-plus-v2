@@ -80,7 +80,9 @@ export default function SettingsPage() {
   }
 
   const accountAge = userProfile?.createdAt 
-    ? Math.floor((Date.now() - new Date(userProfile.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+    ? Math.floor((Date.now() - (userProfile.createdAt instanceof Date 
+        ? userProfile.createdAt.getTime() 
+        : userProfile.createdAt.toDate().getTime())) / (1000 * 60 * 60 * 24))
     : 0
 
   if (loading || !user) {
