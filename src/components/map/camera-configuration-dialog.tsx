@@ -317,10 +317,27 @@ export default function CameraConfigurationDialog({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium mb-2 block">Brand (Optional)</Label>
-                    <Input
-                      {...register('brand')}
-                      placeholder="e.g., Ring, Nest, Hikvision"
-                    />
+                    <select 
+                      {...register('brand')} 
+                      className="w-full p-2 border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-sm"
+                    >
+                      <option value="">Select brand...</option>
+                      <option value="Ring">Ring</option>
+                      <option value="Nest">Nest (Google)</option>
+                      <option value="Arlo">Arlo</option>
+                      <option value="Blink">Blink (Amazon)</option>
+                      <option value="Eufy">Eufy</option>
+                      <option value="Hikvision">Hikvision</option>
+                      <option value="Dahua">Dahua</option>
+                      <option value="Reolink">Reolink</option>
+                      <option value="Wyze">Wyze</option>
+                      <option value="TP-Link">TP-Link</option>
+                      <option value="Swann">Swann</option>
+                      <option value="Lorex">Lorex</option>
+                      <option value="Unifi">Unifi</option>
+                      <option value="Generic">Generic/No Brand</option>
+                      <option value="Other">Other</option>
+                    </select>
                   </div>
                   <div>
                     <Label className="text-sm font-medium mb-2 block">Model (Optional)</Label>
