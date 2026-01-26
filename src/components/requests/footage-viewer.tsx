@@ -265,13 +265,27 @@ export default function FootageViewer({ request, onClose }: FootageViewerProps) 
                             size="sm" 
                             variant="outline" 
                             className="flex-1 text-xs"
-                            onClick={() => {
-                              const link = document.createElement('a')
-                              link.href = footage.url
-                              link.download = footage.fileName
-                              document.body.appendChild(link)
-                              link.click()
-                              document.body.removeChild(link)
+                            onClick={async () => {
+                              try {
+                                // Fetch the file as a blob to force download
+                                const response = await fetch(footage.url)
+                                const blob = await response.blob()
+                                const blobUrl = window.URL.createObjectURL(blob)
+                                
+                                // Create download link
+                                const link = document.createElement('a')
+                                link.href = blobUrl
+                                link.download = footage.fileName
+                                document.body.appendChild(link)
+                                link.click()
+                                
+                                // Cleanup
+                                document.body.removeChild(link)
+                                window.URL.revokeObjectURL(blobUrl)
+                              } catch (error) {
+                                console.error('Download failed:', error)
+                                alert('Download failed. Please try "View Full" and save from your browser.')
+                              }
                             }}
                           >
                             <Download className="w-3 h-3 mr-1" />
