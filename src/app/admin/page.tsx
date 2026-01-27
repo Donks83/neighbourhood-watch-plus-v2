@@ -3,6 +3,9 @@
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/auth-context'
 import AdminVerificationQueueEnhanced from '@/components/admin/admin-verification-queue-enhanced'
+import UserManagement from '@/components/admin/user-management'
+import AdminActivityLogs from '@/components/admin/admin-activity-logs'
+import EmailBlockingManager from '@/components/admin/admin-verification-queue-enhanced'
 import EmailBlockingManager from '@/components/admin/email-blocking-manager'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,7 +23,8 @@ import {
   FileText,
   Settings,
   X,
-  Mail
+  Mail,
+  Activity
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
@@ -276,7 +280,7 @@ export default function AdminPage() {
 
         {/* Admin Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">
               <BarChart3 className="w-4 h-4 mr-2" />
               Overview
@@ -289,6 +293,14 @@ export default function AdminPage() {
               <Shield className="w-4 h-4 mr-2" />
               Camera Verification
             </TabsTrigger>
+            <TabsTrigger value="user-management">
+              <Users className="w-4 h-4 mr-2" />
+              User Management
+            </TabsTrigger>
+            <TabsTrigger value="activity-logs">
+              <Activity className="w-4 h-4 mr-2" />
+              Activity Logs
+            </TabsTrigger>
             <TabsTrigger value="email-blocking">
               <Mail className="w-4 h-4 mr-2" />
               Email Blocking
@@ -297,7 +309,7 @@ export default function AdminPage() {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               {/* Total Users Card */}
               <Card>
                 <CardHeader className="pb-2">
@@ -368,7 +380,7 @@ export default function AdminPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-5 gap-4">
                   <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
                     <div className="text-2xl font-bold text-green-600">
                       {stats.archiveBreakdown.fulfilled || 0}
@@ -397,198 +409,19 @@ export default function AdminPage() {
               </CardContent>
             </Card>
           </TabsContent>
-
-          {/* User Management Tab WITH ROLE ASSIGNMENT */}
-          <TabsContent value="users" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>User Management</CardTitle>
-                <CardDescription>
-                  Manage user roles and rate limits
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {users.slice(0, 20).map((userData) => (
-                    <div 
-                      key={userData.id}
-                      className="relative flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
-                    >
-                      <div className="flex-1">
-                        <div className="font-medium">{userData.displayName || 'Unknown User'}</div>
-                        <div className="text-sm text-gray-500">{userData.email}</div>
-                        <div className="text-xs text-gray-400 mt-1">
-                          Rate Limit: {userData.rateLimits?.weeklyRequestCount || 0}/{userData.rateLimits?.weeklyLimit || 3} requests/week
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={userData.role === 'police' || userData.role === 'insurance' || userData.role === 'security' ? 'default' : 'secondary'}>
-                          {userData.role || 'user'}
-                        </Badge>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setSelectedUser(selectedUser === userData.id ? null : userData.id)}
-                        >
-                          <Settings className="w-3 h-3 mr-1" />
-                          Manage
-                        </Button>
-                      </div>
-                      
-                      {/* User Management Controls (expanded) - WITH ROLE DROPDOWN */}
-                      {selectedUser === userData.id && (
-                        <>
-                          {/* Click outside to close */}
-                          <div 
-                            className="fixed inset-0 z-[5]" 
-                            onClick={() => setSelectedUser(null)}
-                          />
-                          <div className="absolute right-4 mt-2 w-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4 z-10">
-                            <div className="flex items-center justify-between mb-4">
-                              <h4 className="font-medium">User Management</h4>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setSelectedUser(null)}
-                                className="h-6 w-6 p-0"
-                              >
-                                <X className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          
-                          {/* ROLE ASSIGNMENT SECTION */}
-                          <div className="space-y-3 mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
-                            <div>
-                              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
-                                User Role
-                              </label>
-                              <Select
-                                value={userData.role || 'user'}
-                                onValueChange={async (newRole) => {
-                                  try {
-                                    const userRef = doc(db, 'users', userData.id)
-                                    await updateDoc(userRef, { role: newRole })
-                                    
-                                    alert(`✅ Role updated to "${newRole}"`)
-                                    
-                                    // Reload users
-                                    const usersSnapshot = await getDocs(collection(db, 'users'))
-                                    setUsers(usersSnapshot.docs.map(doc => ({
-                                      id: doc.id,
-                                      ...doc.data()
-                                    })))
-                                  } catch (error) {
-                                    console.error('Error updating role:', error)
-                                    alert('❌ Failed to update role')
-                                  }
-                                }}
-                              >
-                                <SelectTrigger className="w-full">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {USER_ROLES.map((role) => (
-                                    <SelectItem key={role.value} value={role.value}>
-                                      <div className="flex flex-col items-start py-1">
-                                        <span className="font-medium">{role.label}</span>
-                                        <span className="text-xs text-gray-500">{role.description}</span>
-                                      </div>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <p className="text-xs text-gray-500 mt-1.5">
-                                🔒 Police, Insurance, Security roles can see hexagonal coverage grid
-                              </p>
-                            </div>
-                          </div>
-                          
-                          {/* RATE LIMIT CONTROLS SECTION */}
-                          <div className="space-y-3">
-                            <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300">Rate Limit Controls</h5>
-                            <div>
-                              <label className="text-sm text-gray-600 dark:text-gray-400 mb-1 block">
-                                Weekly Request Limit
-                              </label>
-                              <div className="flex gap-2">
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  max="999"
-                                  value={newRateLimit}
-                                  onChange={(e) => setNewRateLimit(parseInt(e.target.value))}
-                                  className="flex-1"
-                                />
-                                <Button
-                                  size="sm"
-                                  onClick={async () => {
-                                    try {
-                                      await setCustomRateLimit(userData.id, newRateLimit)
-                                      alert(`✅ Rate limit updated to ${newRateLimit} requests/week`)
-                                      // Reload users
-                                      const usersSnapshot = await getDocs(collection(db, 'users'))
-                                      setUsers(usersSnapshot.docs.map(doc => ({
-                                        id: doc.id,
-                                        ...doc.data()
-                                      })))
-                                    } catch (error) {
-                                      console.error('Error updating rate limit:', error)
-                                      alert('Failed to update rate limit')
-                                    }
-                                  }}
-                                >
-                                  Set
-                                </Button>
-                              </div>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-full"
-                              onClick={async () => {
-                                try {
-                                  await resetRateLimit(userData.id)
-                                  alert('✅ Rate limit reset successfully')
-                                  // Reload users
-                                  const usersSnapshot = await getDocs(collection(db, 'users'))
-                                  setUsers(usersSnapshot.docs.map(doc => ({
-                                    id: doc.id,
-                                    ...doc.data()
-                                  })))
-                                } catch (error) {
-                                  console.error('Error resetting rate limit:', error)
-                                  alert('Failed to reset rate limit')
-                                }
-                              }}
-                            >
-                              Reset Counter to 0
-                            </Button>
-                          </div>
-                        </div>
-                      </>
-                      )}
-                    </div>
-                  ))}
-                  
-                  {users.length > 20 && (
-                    <div className="text-center text-sm text-gray-500 pt-4">
-                      Showing first 20 of {users.length} users
-                    </div>
-                  )}
-                  
-                  {users.length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
-                      No users found
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           {/* Verification Tab */}
           <TabsContent value="verification">
             <AdminVerificationQueueEnhanced />
+          </TabsContent>
+
+          {/* User Management Tab */}
+          <TabsContent value="user-management">
+            <UserManagement />
+          </TabsContent>
+
+          {/* Activity Logs Tab */}
+          <TabsContent value="activity-logs">
+            <AdminActivityLogs />
           </TabsContent>
 
           {/* Email Blocking Tab */}
