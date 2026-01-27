@@ -361,12 +361,17 @@ async function createNotificationsForRequest(
             const incidentDateStr = request.incidentDate instanceof Date 
               ? request.incidentDate.toLocaleString()
               : request.incidentDate.toDate().toLocaleString()
+            
+            // Format location as string
+            const locationStr = typeof request.incidentLocation === 'string' 
+              ? request.incidentLocation
+              : `${request.incidentLocation.lat.toFixed(4)}, ${request.incidentLocation.lng.toFixed(4)}`
               
             await sendFootageRequestEmail(
               notification.email,
               userDoc.data().displayName || 'Camera Owner',
               request.incidentType,
-              request.incidentLocation,
+              locationStr,
               incidentDateStr,
               request.id
             )
