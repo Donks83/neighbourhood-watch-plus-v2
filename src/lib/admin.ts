@@ -264,6 +264,28 @@ async function approveCameraVerification(
     // Update user's trust score
     await updateUserTrustScore(camera.userId, `Camera "${camera.name}" verified`)
     
+    // Send email notification to camera owner
+    try {
+      const userDoc = await getDoc(doc(db, 'users', camera.userId))
+      if (userDoc.exists()) {
+        const userData = userDoc.data()
+        const emailEnabled = userData.emailNotifications !== false
+        
+        if (emailEnabled && userData.email) {
+          const { sendCameraApprovedEmail } = await import('./email-service')
+          await sendCameraApprovedEmail(
+            userData.email,
+            userData.displayName || 'Camera Owner',
+            camera.name
+          )
+          console.log(`✅ Approval email sent to ${userData.email}`)
+        }
+      }
+    } catch (emailError) {
+      console.error('❌ Failed to send approval email:', emailError)
+      // Don't throw - email failure shouldn't prevent approval
+    }
+    
     console.log(`✅ Approved camera verification: ${cameraId}`)
   } catch (error) {
     console.error('❌ Error approving camera verification:', error)
@@ -338,6 +360,30 @@ async function rejectCameraVerification(
     
     // Update user's trust score (penalty for rejection)
     await updateUserTrustScore(camera.userId, `Camera "${camera.name}" rejected: ${rejectionReason}`)
+    
+    // Send email notification to camera owner
+    try {
+      const userDoc = await getDoc(doc(db, 'users', camera.userId))
+      if (userDoc.exists()) {
+        const userData = userDoc.data()
+        const emailEnabled = userData.emailNotifications !== false
+        
+        if (emailEnabled && userData.email) {
+          const { sendCameraRejectedEmail } = await import('./email-service')
+          const reasonText = customReason || rejectionReason
+          await sendCameraRejectedEmail(
+            userData.email,
+            userData.displayName || 'Camera Owner',
+            camera.name,
+            reasonText
+          )
+          console.log(`✅ Rejection email sent to ${userData.email}`)
+        }
+      }
+    } catch (emailError) {
+      console.error('❌ Failed to send rejection email:', emailError)
+      // Don't throw - email failure shouldn't prevent rejection
+    }
     
     console.log(`❌ Rejected camera verification: ${cameraId} (${rejectionReason})`)
   } catch (error) {

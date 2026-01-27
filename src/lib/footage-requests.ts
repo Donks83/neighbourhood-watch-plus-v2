@@ -329,8 +329,50 @@ async function createNotificationsForRequest(
           // TODO: Integrate real SMS service (Twilio, AWS SNS, etc.)
         }
         if (prefs.channels.email) {
-          console.log(`📧 Would send email to ${ownerMarkers[0].marker.ownerEmail}`)
-          // TODO: Integrate real email service (SendGrid, AWS SES, etc.)
+          // Send email notification
+          try {
+            const { sendFootageMatchEmail } = await import('./email-service')
+            const matchDistance = Math.round(ownerMarkers[0].distance || 0)
+            await sendFootageMatchEmail(
+              ownerMarkers[0].marker.ownerEmail,
+              ownerMarkers[0].marker.ownerName || 'Neighbour',
+              request.incidentType,
+              matchDistance
+            )
+            console.log(`✅ Email sent to ${ownerMarkers[0].marker.ownerEmail}`)
+          } catch (emailError) {
+            console.error(`❌ Failed to send email:`, emailError)
+          }
+        }
+      }
+    }
+    
+    // Send email notifications to camera owners
+    for (const notification of notifications) {
+      if (notification.type === 'new-request' && notification.email) {
+        try {
+          // Check if user has email notifications enabled
+          const userDoc = await getDoc(doc(db, 'users', notification.userId))
+          const emailEnabled = userDoc.exists() && userDoc.data().emailNotifications !== false
+          
+          if (emailEnabled) {
+            const { sendFootageRequestEmail } = await import('./email-service')
+            const incidentDateStr = request.incidentDate instanceof Date 
+              ? request.incidentDate.toLocaleString()
+              : request.incidentDate.toDate().toLocaleString()
+              
+            await sendFootageRequestEmail(
+              notification.email,
+              userDoc.data().displayName || 'Camera Owner',
+              request.incidentType,
+              request.incidentLocation,
+              incidentDateStr,
+              request.id
+            )
+            console.log(`✅ Email sent to camera owner ${notification.email}`)
+          }
+        } catch (emailError) {
+          console.error(`❌ Failed to send email to ${notification.email}:`, emailError)
         }
       }
     }
