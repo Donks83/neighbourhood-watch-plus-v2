@@ -573,7 +573,10 @@ async function getPendingVerifications(adminId: string, limitCount: number = 20)
             name: camera.name,
             type: camera.type,
             model: camera.specifications?.model || 'Unknown',
-            brand: camera.specifications?.brand || 'Unknown'
+            brand: camera.specifications?.brand || 'Unknown',
+            resolution: camera.specifications?.resolution,
+            nightVision: camera.specifications?.nightVision,
+            viewDistance: camera.fieldOfView?.range
           },
           daysPending: Math.floor((Date.now() - data.submittedAt.toMillis()) / (1000 * 60 * 60 * 24))
         })

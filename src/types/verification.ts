@@ -142,6 +142,9 @@ export interface VerificationQueueItem {
     type: string
     model?: string
     brand?: string
+    resolution?: string
+    nightVision?: boolean
+    viewDistance?: number
   }
   daysPending: number      // Calculated field for admin priority
 }
@@ -236,4 +239,5 @@ export interface VerificationAppeal {
   status: 'pending' | 'resolved' | 'escalated'
   escalatedTo?: string      // Super admin UID if escalated
 }
+
 
