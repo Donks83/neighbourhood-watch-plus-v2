@@ -126,7 +126,7 @@ export async function getAllCameras(): Promise<CameraWithOwner[]> {
  */
 export async function updateUserRole(
   userId: string, 
-  newRole: 'user' | 'admin' | 'super_admin' | 'police' | 'insurance'
+  newRole: 'user' | 'business' | 'premium_business' | 'police' | 'admin' | 'super_admin'
 ): Promise<void> {
   try {
     // Update in users collection

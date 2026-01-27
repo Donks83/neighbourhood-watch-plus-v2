@@ -160,8 +160,8 @@ export default function EnhancedIncidentReportPanel({
   userRole,
   subscription
 }: EnhancedIncidentReportPanelProps) {
-  const isPremiumUser = ['police', 'insurance', 'security'].includes(userRole)
-  const isCommunityUser = userRole === 'community'
+  const isPremiumUser = ['premium_business', 'police', 'admin', 'super_admin'].includes(userRole)
+  const isCommunityUser = userRole === 'user' || userRole === 'business'
   
   const {
     register,
