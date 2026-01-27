@@ -328,7 +328,9 @@ export default function UserManagement({ className }: UserManagementProps) {
                         {userItem.createdAt && (
                           <div className="flex items-center gap-1">
                             <Calendar className="w-3 h-3" />
-                            Joined {new Date(userItem.createdAt).toLocaleDateString()}
+                            Joined {typeof userItem.createdAt === 'object' && 'toDate' in userItem.createdAt 
+                              ? userItem.createdAt.toDate().toLocaleDateString()
+                              : new Date(userItem.createdAt).toLocaleDateString()}
                           </div>
                         )}
                       </div>
