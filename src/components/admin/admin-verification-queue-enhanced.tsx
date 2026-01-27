@@ -599,8 +599,16 @@ export default function AdminVerificationQueueEnhanced({ className }: AdminVerif
                               </p>
                             </div>
                             <div>
-                              <Label className="text-xs text-gray-600">Camera Name</Label>
-                              <p className="font-medium">{item.cameraDetails.name}</p>
+                              <Label className="text-xs text-gray-600">Resolution</Label>
+                              <p className="font-medium">{item.cameraDetails.resolution || 'Unknown'}</p>
+                            </div>
+                            <div>
+                              <Label className="text-xs text-gray-600">Night Vision</Label>
+                              <p className="font-medium">{item.cameraDetails.nightVision ? 'Yes ?' : 'No'}</p>
+                            </div>
+                            <div>
+                              <Label className="text-xs text-gray-600">View Distance</Label>
+                              <p className="font-medium">{item.cameraDetails.viewDistance ? \\m\ : 'Unknown'}</p>
                             </div>
                             <div>
                               <Label className="text-xs text-gray-600">Submitted</Label>
@@ -770,3 +778,4 @@ export default function AdminVerificationQueueEnhanced({ className }: AdminVerif
     </div>
   )
 }
+
