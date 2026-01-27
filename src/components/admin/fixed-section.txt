@@ -1,0 +1,8 @@
+                            <div>
+                              <Label className="text-xs text-gray-600">Night Vision</Label>
+                              <p className="font-medium">{item.cameraDetails.nightVision ? 'Yes ✓' : 'No'}</p>
+                            </div>
+                            <div>
+                              <Label className="text-xs text-gray-600">View Distance</Label>
+                              <p className="font-medium">{item.cameraDetails.viewDistance ? `${item.cameraDetails.viewDistance}m` : 'Unknown'}</p>
+                            </div>
