@@ -1,21 +1,30 @@
 /**
- * SendGrid Email Service
+ * SendGrid Email Service (Server-Side Only)
  * Handles all email notifications for Neighbourhood Watch+
+ * 
+ * IMPORTANT: This module uses Node.js APIs and can only run on the server.
+ * All functions check for server-side execution automatically.
  */
 
-import sgMail from '@sendgrid/mail'
+// Dynamic import helper for SendGrid (server-side only)
+async function getSendGridClient() {
+  if (typeof window !== 'undefined') {
+    console.warn('⚠️ SendGrid cannot be used in browser context')
+    return null
+  }
+  
+  const sgMail = (await import('@sendgrid/mail')).default
+  const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || ''
+  
+  if (SENDGRID_API_KEY && !sgMail.apiKey) {
+    sgMail.setApiKey(SENDGRID_API_KEY)
+  }
+  
+  return SENDGRID_API_KEY ? sgMail : null
+}
 
-// Initialize SendGrid with API key from environment
-const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || ''
 const FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL || 'noreply@neighbourhoodwatchplus.com'
 const FROM_NAME = 'Neighbourhood Watch+'
-
-if (SENDGRID_API_KEY) {
-  sgMail.setApiKey(SENDGRID_API_KEY)
-  console.log('✅ SendGrid initialized')
-} else {
-  console.warn('⚠️ SendGrid API key not found. Email notifications will be logged only.')
-}
 
 export interface EmailOptions {
   to: string
@@ -25,12 +34,20 @@ export interface EmailOptions {
 }
 
 /**
- * Send email via SendGrid
+ * Send email via SendGrid (Server-Side Only)
  */
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
+  // Server-side check
+  if (typeof window !== 'undefined') {
+    console.warn('⚠️ sendEmail called from browser - emails can only be sent from server')
+    return false
+  }
+
   try {
+    const sgMail = await getSendGridClient()
+    
     // If no API key, just log
-    if (!SENDGRID_API_KEY) {
+    if (!sgMail) {
       console.log(`📧 [EMAIL LOG] To: ${options.to}`)
       console.log(`📧 [EMAIL LOG] Subject: ${options.subject}`)
       console.log(`📧 [EMAIL LOG] Would send email (API key not configured)`)
@@ -93,7 +110,7 @@ function emailTemplate(content: string): string {
                 Neighbourhood Watch+ | Privacy-First Community Security
               </p>
               <p style="margin: 0; font-size: 12px; color: #9ca3af;">
-                <a href="https://neighbourhoodwatchplus.com/unsubscribe" style="color: #3b82f6; text-decoration: none;">Manage Preferences</a> | 
+                <a href="https://neighbourhoodwatchplus.com/settings" style="color: #3b82f6; text-decoration: none;">Manage Preferences</a> | 
                 <a href="https://neighbourhoodwatchplus.com/privacy" style="color: #3b82f6; text-decoration: none;">Privacy Policy</a>
               </p>
             </td>
@@ -220,7 +237,7 @@ export async function sendFootageMatchEmail(
     <p style="color: #374151; line-height: 1.6; margin: 0 0 15px 0;">
       Great news! The temporary footage you registered matches a nearby incident report.
     </p>
-    <div style="background-color: #ecfdf5; border-left: 4px solid: #10b981; padding: 15px; margin: 20px 0; border-radius: 4px;">
+    <div style="background-color: #ecfdf5; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0; border-radius: 4px;">
       <p style="margin: 0 0 10px 0; color: #374151;"><strong>Incident Type:</strong> ${incidentType}</p>
       <p style="margin: 0; color: #374151;"><strong>Distance:</strong> Approximately ${matchDistance}m from your footage</p>
     </div>
