@@ -33,16 +33,12 @@ import { Checkbox } from '@/components/ui/checkbox'
 import VerificationStatusBadge, { VerificationPriorityBadge } from './verification-status-badge'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/auth-context'
-import dynamic from 'next/dynamic'
 import type { 
   VerificationQueueItem, 
   VerificationStats,
   RejectionReason,
   VerificationStatus
 } from '@/types/verification'
-
-// Dynamically import Map component (client-side only)
-const Map = dynamic(() => import('@/components/map/map'), { ssr: false })
 
 interface AdminVerificationQueueEnhancedProps {
   className?: string
@@ -598,19 +594,13 @@ export default function AdminVerificationQueueEnhanced({ className }: AdminVerif
                             </div>
                             <div>
                               <Label className="text-xs text-gray-600">Brand/Model</Label>
-                              <p className="font-medium">{item.cameraDetails.brand} {item.cameraDetails.model}</p>
+                              <p className="font-medium">
+                                {item.cameraDetails.brand || 'N/A'} {item.cameraDetails.model || ''}
+                              </p>
                             </div>
                             <div>
-                              <Label className="text-xs text-gray-600">Resolution</Label>
-                              <p className="font-medium">{item.cameraDetails.resolution}</p>
-                            </div>
-                            <div>
-                              <Label className="text-xs text-gray-600">Night Vision</Label>
-                              <p className="font-medium">{item.cameraDetails.hasNightVision ? 'Yes' : 'No'}</p>
-                            </div>
-                            <div>
-                              <Label className="text-xs text-gray-600">View Distance</Label>
-                              <p className="font-medium">{item.cameraDetails.viewDistance}m</p>
+                              <Label className="text-xs text-gray-600">Camera Name</Label>
+                              <p className="font-medium">{item.cameraDetails.name}</p>
                             </div>
                             <div>
                               <Label className="text-xs text-gray-600">Submitted</Label>
@@ -625,15 +615,9 @@ export default function AdminVerificationQueueEnhanced({ className }: AdminVerif
                             <div className="flex items-start gap-2">
                               <Home className="w-4 h-4 mt-0.5 flex-shrink-0 text-gray-600" />
                               <div>
-                                <p className="font-medium">{item.location.street}</p>
+                                {item.location.street && <p className="font-medium">{item.location.street}</p>}
                                 <p className="text-gray-600">{item.location.city}, {item.location.postcode}</p>
                               </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <MapPin className="w-4 h-4 flex-shrink-0 text-gray-600" />
-                              <p className="text-gray-600">
-                                {item.location.coordinates.lat.toFixed(6)}, {item.location.coordinates.lng.toFixed(6)}
-                              </p>
                             </div>
                           </div>
                         </div>
@@ -733,27 +717,46 @@ export default function AdminVerificationQueueEnhanced({ className }: AdminVerif
                         </div>
                       </div>
                       
-                      {/* Right Column: Map View */}
+                      {/* Right Column: Evidence & Notes */}
                       <div className="space-y-4">
                         <div>
-                          <h4 className="font-medium mb-3">Location on Map</h4>
-                          <div className="h-[400px] rounded-lg overflow-hidden border border-gray-200">
-                            <Map
-                              initialCenter={item.location.coordinates}
-                              markers={[{
-                                id: item.cameraId,
-                                location: item.location.coordinates,
-                                type: 'camera'
-                              }]}
-                              showHeatmap={false}
-                              showCameraMarkers={false}
-                              registeredCameras={[]}
-                              onDensityAreasChange={() => {}}
-                            />
+                          <h4 className="font-medium mb-3">Verification Evidence</h4>
+                          {item.evidence.photos && item.evidence.photos.length > 0 ? (
+                            <div className="grid grid-cols-2 gap-2">
+                              {item.evidence.photos.map((photo, idx) => (
+                                <div key={idx} className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                                  <img 
+                                    src={photo} 
+                                    alt={`Evidence ${idx + 1}`}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-gray-600 p-4 bg-gray-50 rounded-lg">
+                              No photos provided
+                            </div>
+                          )}
+                        </div>
+                        
+                        {item.evidence.userNotes && (
+                          <div>
+                            <h4 className="font-medium mb-2">User Notes</h4>
+                            <div className="text-sm text-gray-700 p-3 bg-gray-50 rounded-lg">
+                              {item.evidence.userNotes}
+                            </div>
                           </div>
-                          <p className="text-xs text-gray-600 mt-2">
-                            📍 Fuzzy location preview (25m radius for privacy)
-                          </p>
+                        )}
+                        
+                        <div>
+                          <h4 className="font-medium mb-2">Location Address</h4>
+                          <div className="text-sm space-y-1">
+                            {item.location.street && <p className="text-gray-700">{item.location.street}</p>}
+                            <p className="text-gray-700">
+                              {item.location.city}, {item.location.postcode}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
