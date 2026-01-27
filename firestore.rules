@@ -192,5 +192,32 @@ service cloud.firestore {
       // Write: Admin only
       allow write: if isAdmin();
     }
+    
+    // ============================================
+    // ADMIN LOGS COLLECTION (for activity tracking)
+    // ============================================
+    
+    match /admin_logs/{logId} {
+      // Read: Admin only (for viewing activity logs)
+      allow read: if isAdmin();
+      
+      // Create: Admin only (system creates logs)
+      allow create: if isAdmin();
+      
+      // Update/Delete: Super admin only
+      allow update, delete: if isSuperAdmin();
+    }
+    
+    // ============================================
+    // BLOCKED EMAILS COLLECTION (for spam prevention)
+    // ============================================
+    
+    match /blocked_emails/{domain} {
+      // Read: Admin only
+      allow read: if isAdmin();
+      
+      // Write: Super admin only
+      allow write: if isSuperAdmin();
+    }
   }
 }

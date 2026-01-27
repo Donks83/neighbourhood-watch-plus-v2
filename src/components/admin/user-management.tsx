@@ -356,9 +356,44 @@ export default function UserManagement({ className }: UserManagementProps) {
                               <Shield className="w-4 h-4 mr-2" />
                               Make Police
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleAssignRole(userItem.uid, 'insurance')}>
+                              <ShieldAlert className="w-4 h-4 mr-2" />
+                              Make Insurance
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleAssignRole(userItem.uid, 'security')}>
+                              <ShieldCheck className="w-4 h-4 mr-2" />
+                              Make Security
+                            </DropdownMenuItem>
                           </>
                         ) : (
                           <>
+                            {/* Role Change Options */}
+                            {userItem.userRole.role !== 'admin' && (
+                              <DropdownMenuItem onClick={() => handleAssignRole(userItem.uid, 'admin')}>
+                                <ShieldCheck className="w-4 h-4 mr-2" />
+                                Change to Admin
+                              </DropdownMenuItem>
+                            )}
+                            {userItem.userRole.role !== 'police' && (
+                              <DropdownMenuItem onClick={() => handleAssignRole(userItem.uid, 'police')}>
+                                <Shield className="w-4 h-4 mr-2" />
+                                Change to Police
+                              </DropdownMenuItem>
+                            )}
+                            {userItem.userRole.role !== 'insurance' && (
+                              <DropdownMenuItem onClick={() => handleAssignRole(userItem.uid, 'insurance')}>
+                                <ShieldAlert className="w-4 h-4 mr-2" />
+                                Change to Insurance
+                              </DropdownMenuItem>
+                            )}
+                            {userItem.userRole.role !== 'security' && (
+                              <DropdownMenuItem onClick={() => handleAssignRole(userItem.uid, 'security')}>
+                                <ShieldCheck className="w-4 h-4 mr-2" />
+                                Change to Security
+                              </DropdownMenuItem>
+                            )}
+                            
+                            {/* Status Toggle */}
                             {userItem.userRole.isActive ? (
                               <DropdownMenuItem 
                                 onClick={() => handleToggleStatus(userItem.uid, true)}
@@ -376,12 +411,14 @@ export default function UserManagement({ className }: UserManagementProps) {
                                 Activate
                               </DropdownMenuItem>
                             )}
+                            
+                            {/* Revoke Role */}
                             <DropdownMenuItem 
                               onClick={() => handleRevokeRole(userItem.uid)}
                               className="text-red-600"
                             >
                               <Ban className="w-4 h-4 mr-2" />
-                              Revoke Role
+                              Revoke Role (Back to User)
                             </DropdownMenuItem>
                           </>
                         )}
