@@ -609,7 +609,7 @@ export default function EnhancedIncidentReportPanel({
                           }}
                           className="rounded"
                         />
-                        <span className="capitalize">{role === 'community' ? 'Community (anonymized)' : role}</span>
+                        <span className="capitalize">{role === 'user' ? 'Public (anonymized)' : role.replace('_', ' ')}</span>
                       </label>
                     ))}
                   </div>

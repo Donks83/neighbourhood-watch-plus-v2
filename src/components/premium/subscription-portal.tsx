@@ -53,9 +53,9 @@ export default function SubscriptionPortal({
   onSelectPlan,
   onStartTrial
 }: SubscriptionPortalProps) {
-  const [selectedRole, setSelectedRole] = useState<UserRole>('police')
+  const [selectedRole, setSelectedRole] = useState<UserRole>('business')
   const [orgDetails, setOrgDetails] = useState<Partial<OrganizationDetails>>({
-    type: 'police'
+    type: 'business'
   })
 
   return (
@@ -111,7 +111,7 @@ export default function SubscriptionPortal({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5 text-green-600" />
-              Insurance Services
+              Premium Business
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -135,7 +135,7 @@ export default function SubscriptionPortal({
                   <span>Standard support</span>
                 </li>
               </ul>
-              <Button className="w-full" onClick={() => setSelectedRole('insurance')}>
+              <Button className="w-full" onClick={() => setSelectedRole('premium_business')}>
                 Select Plan
               </Button>
             </div>
@@ -147,7 +147,7 @@ export default function SubscriptionPortal({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Building className="w-5 h-5 text-purple-600" />
-              Security Services
+              Business
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -171,7 +171,7 @@ export default function SubscriptionPortal({
                   <span>Standard support</span>
                 </li>
               </ul>
-              <Button className="w-full" onClick={() => setSelectedRole('security')}>
+              <Button className="w-full" onClick={() => setSelectedRole('business')}>
                 Select Plan
               </Button>
             </div>
