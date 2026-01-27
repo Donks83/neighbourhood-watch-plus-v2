@@ -1,28 +1,32 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { X, Camera } from 'lucide-react'
+import { X, Camera, Upload, Image as ImageIcon, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import type { Location } from '@/types'
 import type { CameraPlacementData, RegisteredCamera } from '@/types/camera'
 import { formatCoordinates } from '@/lib/utils'
 import { fuzzyLocation } from '@/lib/camera-utils'
 import { useAuth } from '@/contexts/auth-context'
 import type { CameraVerification, VerificationEvidence } from '@/types/verification'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { storage } from '@/lib/firebase'
 
 const cameraConfigSchema = z.object({
   name: z.string().min(3, 'Camera name must be at least 3 characters'),
-  type: z.enum(['doorbell', 'security', 'other']), // Removed dash and indoor as requested
+  type: z.enum(['doorbell', 'security', 'other']),
   resolution: z.enum(['720p', '1080p', '4K', 'Other']),
   nightVision: z.boolean(),
   brand: z.string().optional(),
   model: z.string().optional(),
-  viewDistance: z.number().min(1).max(40) // Changed to 1-40m as requested
+  viewDistance: z.number().min(1).max(40),
+  userNotes: z.string().optional()
 })
 
 type CameraConfigFormData = z.infer<typeof cameraConfigSchema>
@@ -53,6 +57,9 @@ export default function CameraPopupConfig({
   position
 }: CameraPopupConfigProps) {
   const { user } = useAuth()
+  const [verificationPhotos, setVerificationPhotos] = useState<File[]>([])
+  const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([])
+  const [uploadingPhotos, setUploadingPhotos] = useState(false)
   
   const {
     register,
@@ -69,21 +76,60 @@ export default function CameraPopupConfig({
       nightVision: true,
       brand: '',
       model: '',
-      viewDistance: 12 // Default to 12m
+      viewDistance: 12,
+      userNotes: ''
     },
     mode: 'onChange'
   })
 
   const watchedViewDistance = watch('viewDistance')
 
-  // Update placement data in real-time for map visualization - use ref to prevent infinite loops
+  // Update placement data in real-time for map visualization
   const prevViewDistance = React.useRef<number>(watchedViewDistance)
   React.useEffect(() => {
     if (typeof watchedViewDistance === 'number' && onViewDistanceChange && watchedViewDistance !== prevViewDistance.current) {
       prevViewDistance.current = watchedViewDistance
       onViewDistanceChange(watchedViewDistance)
     }
-  }, [watchedViewDistance]) // Removed onViewDistanceChange from deps
+  }, [watchedViewDistance])
+
+  // Handle photo selection
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    
+    // Limit to 4 photos
+    const newPhotos = [...verificationPhotos, ...files].slice(0, 4)
+    setVerificationPhotos(newPhotos)
+    
+    // Create preview URLs
+    const newPreviewUrls = newPhotos.map(file => URL.createObjectURL(file))
+    setPhotoPreviewUrls(newPreviewUrls)
+  }
+
+  // Remove photo
+  const removePhoto = (index: number) => {
+    const newPhotos = verificationPhotos.filter((_, i) => i !== index)
+    const newPreviewUrls = photoPreviewUrls.filter((_, i) => i !== index)
+    setVerificationPhotos(newPhotos)
+    setPhotoPreviewUrls(newPreviewUrls)
+  }
+
+  // Upload photos to Firebase Storage
+  const uploadPhotos = async (userId: string, cameraId: string): Promise<string[]> => {
+    if (verificationPhotos.length === 0) return []
+    
+    const uploadPromises = verificationPhotos.map(async (file, index) => {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${cameraId}-${index}-${Date.now()}.${fileExt}`
+      const storageRef = ref(storage, `verification-photos/${userId}/${fileName}`)
+      
+      await uploadBytes(storageRef, file)
+      return getDownloadURL(storageRef)
+    })
+    
+    return Promise.all(uploadPromises)
+  }
 
   const handleFormSubmit = async (data: CameraConfigFormData) => {
     try {
@@ -92,31 +138,37 @@ export default function CameraPopupConfig({
       }
 
       console.log('💾 Starting camera save process...', data)
-      console.log('💾 User:', { uid: user.uid, email: user.email })
-      console.log('💾 Placement location:', placementData.location)
+      setUploadingPhotos(true)
 
-      // Create default verification evidence
-      const defaultEvidence: VerificationEvidence = {
-        userNotes: 'Camera registered through property dashboard'
+      const cameraId = `camera-${Date.now()}`
+
+      // Upload verification photos
+      const photoUrls = await uploadPhotos(user.uid, cameraId)
+      console.log('📸 Uploaded photos:', photoUrls)
+
+      // Create verification evidence with photos and notes
+      const evidence: VerificationEvidence = {
+        photos: photoUrls.length > 0 ? photoUrls : undefined,
+        userNotes: data.userNotes || 'Camera registered through property dashboard'
       }
 
-      // Create verification object - cameras default to pending status
+      // Create verification object
       const verification: CameraVerification = {
         status: 'pending',
         submittedAt: new Date() as any,
-        evidence: defaultEvidence,
+        evidence,
         history: [{
           id: `submit-${Date.now()}`,
           action: 'submitted',
           performedBy: user.uid,
           performedAt: new Date() as any,
-          evidence: defaultEvidence
+          evidence
         }],
         priority: 'normal'
       }
 
       const newCamera: RegisteredCamera = {
-        id: `camera-${Date.now()}`,
+        id: cameraId,
         userEmail: user.email || '',
         userId: user.uid,
         location: placementData.location,
@@ -139,13 +191,9 @@ export default function CameraPopupConfig({
           maxRequestRadius: data.viewDistance,
           autoRespond: false
         },
-        // New verification system fields
-        operationalStatus: 'active', // Camera is operational
-        verification, // Verification data with pending status
-        
-        // Legacy field for backwards compatibility
+        operationalStatus: 'active',
+        verification,
         status: 'active',
-        
         createdAt: new Date() as any,
         lastUpdated: new Date() as any
       }
@@ -155,23 +203,29 @@ export default function CameraPopupConfig({
       console.log('💾 onSave completed, closing popup')
       
       reset()
+      setVerificationPhotos([])
+      setPhotoPreviewUrls([])
       onClose()
     } catch (error) {
       console.error('❌ Error saving camera:', error)
       alert('Failed to save camera. Please try again.')
+    } finally {
+      setUploadingPhotos(false)
     }
   }
 
   const handleClose = () => {
     reset()
+    setVerificationPhotos([])
+    setPhotoPreviewUrls([])
     onClose()
   }
 
   if (!isOpen) return null
 
-  // Calculate optimal position to avoid screen edges
-  const popupWidth = 320
-  const popupHeight = 400
+  // Calculate optimal position
+  const popupWidth = 360
+  const popupHeight = 600
   const safePosition = {
     x: Math.min(position.x, window.innerWidth - popupWidth - 20),
     y: Math.min(position.y, window.innerHeight - popupHeight - 20)
@@ -179,11 +233,8 @@ export default function CameraPopupConfig({
 
   return (
     <>
-      {/* No backdrop - keep map fully interactive */}
-      
-      {/* Small Popup Window */}
       <div 
-        className="fixed z-[1800] bg-white dark:bg-gray-900 rounded-xl shadow-2xl border-2 border-blue-200 dark:border-blue-700 w-80 max-h-[calc(100vh-100px)] flex flex-col"
+        className="fixed z-[1800] bg-white dark:bg-gray-900 rounded-xl shadow-2xl border-2 border-blue-200 dark:border-blue-700 w-[360px] max-h-[calc(100vh-100px)] flex flex-col"
         style={{
           left: `${safePosition.x}px`,
           top: `${safePosition.y}px`,
@@ -216,20 +267,12 @@ export default function CameraPopupConfig({
         </div>
 
         {/* Scrollable Form Content */}
-        <div className="p-4 max-h-96 overflow-y-auto space-y-4">
-          
-          {/* Live Preview Notice */}
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
-            <div className="text-xs text-green-800 dark:text-green-200 flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              Live Preview: Coverage updates as you adjust settings!
-            </div>
-          </div>
+        <div className="p-4 max-h-[500px] overflow-y-auto space-y-4">
           
           {/* Verification Notice */}
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
             <div className="text-xs text-blue-800 dark:text-blue-200">
-              🔍 <strong>Verification Required:</strong> Your camera will be submitted for community verification after registration. Verified cameras build trust and receive more footage requests.
+              🔍 <strong>Verification Required:</strong> Upload photos and add notes to help admins verify your camera faster!
             </div>
           </div>
           
@@ -250,7 +293,7 @@ export default function CameraPopupConfig({
               )}
             </div>
 
-            {/* Camera Type - Simplified Options */}
+            {/* Camera Type */}
             <div>
               <Label className="text-sm font-medium mb-2 block">
                 Camera Type <span className="text-red-500">*</span>
@@ -276,7 +319,7 @@ export default function CameraPopupConfig({
               </div>
             </div>
 
-            {/* Technical Specs - Simplified */}
+            {/* Technical Specs */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-sm font-medium mb-2 block">Resolution</Label>
@@ -289,9 +332,9 @@ export default function CameraPopupConfig({
               </div>
               <div>
                 <Label className="text-sm font-medium mb-2 block">Night Vision</Label>
-                <label className="flex items-center gap-2 p-2 border border-gray-200 dark:border-gray-700 rounded-md cursor-pointer text-sm">
+                <label className="flex items-center gap-2 p-2 border border-gray-200 dark:border-gray-700 rounded-md cursor-pointer text-sm h-[42px]">
                   <input type="checkbox" {...register('nightVision')} />
-                  <span>Has night vision</span>
+                  <span>Enabled</span>
                 </label>
               </div>
             </div>
@@ -299,41 +342,34 @@ export default function CameraPopupConfig({
             {/* Brand & Model */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-sm font-medium mb-2 block">Brand (Optional)</Label>
+                <Label className="text-sm font-medium mb-2 block">Brand</Label>
                 <select {...register('brand')} className="w-full p-2 text-sm border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800">
-                  <option value="">Select brand...</option>
+                  <option value="">Select...</option>
                   <option value="Ring">Ring</option>
-                  <option value="Nest">Nest (Google)</option>
+                  <option value="Nest">Nest</option>
                   <option value="Arlo">Arlo</option>
-                  <option value="Blink">Blink (Amazon)</option>
+                  <option value="Blink">Blink</option>
                   <option value="Eufy">Eufy</option>
                   <option value="Hikvision">Hikvision</option>
-                  <option value="Dahua">Dahua</option>
                   <option value="Reolink">Reolink</option>
                   <option value="Wyze">Wyze</option>
-                  <option value="TP-Link">TP-Link</option>
-                  <option value="Swann">Swann</option>
-                  <option value="Lorex">Lorex</option>
-                  <option value="Unifi">Unifi</option>
-                  <option value="Generic">Generic/No Brand</option>
                   <option value="Other">Other</option>
                 </select>
               </div>
               <div>
-                <Label className="text-sm font-medium mb-2 block">Model (Optional)</Label>
+                <Label className="text-sm font-medium mb-2 block">Model</Label>
                 <Input
                   {...register('model')}
-                  placeholder="e.g., Video Doorbell Pro"
+                  placeholder="Optional"
                   className="text-sm"
                 />
               </div>
             </div>
 
-            {/* View Distance - 1-40m Range */}
+            {/* View Distance */}
             <div>
               <Label className="text-sm font-medium mb-2 block">
-                View Distance: {watch('viewDistance')}m 
-                <span className="text-blue-600 text-xs">🔄 Live preview!</span>
+                View Distance: {watch('viewDistance')}m
               </Label>
               <div className="px-2">
                 <input
@@ -350,21 +386,80 @@ export default function CameraPopupConfig({
                   <span>40m</span>
                 </div>
               </div>
-              <p className="text-xs text-gray-500 mt-2">
-                Effective view distance of your camera. <span className="text-blue-600 font-medium">Watch the coverage circle update on the map!</span>
+            </div>
+
+            {/* Verification Photos */}
+            <div>
+              <Label className="text-sm font-medium mb-2 block">
+                Verification Photos (Optional)
+              </Label>
+              <p className="text-xs text-gray-600 mb-2">
+                Upload photos of your camera for faster verification (max 4)
+              </p>
+              
+              {photoPreviewUrls.length > 0 && (
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  {photoPreviewUrls.map((url, index) => (
+                    <div key={index} className="relative aspect-video bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                      <img 
+                        src={url} 
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removePhoto(index)}
+                        className="absolute top-1 right-1 w-6 h-6 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {photoPreviewUrls.length < 4 && (
+                <label className="flex flex-col items-center gap-2 p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <Upload className="w-8 h-8 text-gray-400" />
+                  <span className="text-sm text-gray-600">Click to upload</span>
+                  <span className="text-xs text-gray-500">{photoPreviewUrls.length}/4 photos</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handlePhotoSelect}
+                    className="hidden"
+                  />
+                </label>
+              )}
+            </div>
+
+            {/* User Notes */}
+            <div>
+              <Label className="text-sm font-medium mb-2 block">
+                Additional Notes (Optional)
+              </Label>
+              <Textarea
+                {...register('userNotes')}
+                placeholder="Any additional information to help admins verify your camera..."
+                rows={3}
+                className="text-sm"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                e.g., Installation date, view angle description, why this camera is important for the community
               </p>
             </div>
           </form>
         </div>
 
-        {/* Fixed Footer with Save Button */}
+        {/* Fixed Footer */}
         <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-800">
           <div className="flex gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={handleClose}
-              disabled={isSubmitting}
+              disabled={isSubmitting || uploadingPhotos}
               className="flex-1 text-sm"
             >
               Cancel
@@ -372,10 +467,15 @@ export default function CameraPopupConfig({
             <Button 
               type="submit"
               form="camera-popup-form"
-              disabled={!isValid || isSubmitting}
+              disabled={!isValid || isSubmitting || uploadingPhotos}
               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm"
             >
-              {isSubmitting ? (
+              {uploadingPhotos ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Uploading...
+                </div>
+              ) : isSubmitting ? (
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   Saving...
@@ -386,7 +486,6 @@ export default function CameraPopupConfig({
             </Button>
           </div>
           
-          {/* Status Indicator */}
           <div className="text-center mt-2">
             <span className={`text-xs ${
               isValid ? "text-green-600" : "text-red-500"

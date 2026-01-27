@@ -1,0 +1,10 @@
+          },
+          cameraDetails: {
+            name: camera.name,
+            type: camera.type,
+            model: camera.specifications?.model || 'Unknown',
+            brand: camera.specifications?.brand || 'Unknown',
+            resolution: camera.specifications?.resolution,
+            nightVision: camera.specifications?.nightVision,
+            viewDistance: camera.fieldOfView?.range
+          },
