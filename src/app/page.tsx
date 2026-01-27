@@ -43,10 +43,12 @@ export default function HomePage() {
   // Hexagonal grid visibility - ONLY for elevated privilege users
   // Police, Insurance, Security firms can see density grid
   // Regular community members NEVER see the grid (privacy protection)
+  // Only Premium Business, Police, Admin, and Super Admin can see hex map
+  // Only Premium Business, Police, Admin, and Super Admin can see hex map
   const canViewHexGrid = React.useMemo(() => {
     if (!user || !userProfile) return false
     const role = userProfile.role || 'user'
-    return role === 'police' || role === 'insurance' || role === 'security' || role === 'admin' || role === 'super_admin'
+    return role === 'premium_business' || role === 'police' || role === 'admin' || role === 'super_admin'
   }, [user, userProfile])
   
   // Temporary Evidence Marker state
