@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/auth-context'
 import AdminVerificationQueue from '@/components/admin/admin-verification-queue'
+import EmailBlockingManager from '@/components/admin/email-blocking-manager'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -18,7 +19,8 @@ import {
   Archive,
   FileText,
   Settings,
-  X
+  X,
+  Mail
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
@@ -274,7 +276,7 @@ export default function AdminPage() {
 
         {/* Admin Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">
               <BarChart3 className="w-4 h-4 mr-2" />
               Overview
@@ -286,6 +288,10 @@ export default function AdminPage() {
             <TabsTrigger value="verification">
               <Shield className="w-4 h-4 mr-2" />
               Camera Verification
+            </TabsTrigger>
+            <TabsTrigger value="email-blocking">
+              <Mail className="w-4 h-4 mr-2" />
+              Email Blocking
             </TabsTrigger>
           </TabsList>
 
@@ -583,6 +589,11 @@ export default function AdminPage() {
           {/* Verification Tab */}
           <TabsContent value="verification">
             <AdminVerificationQueue />
+          </TabsContent>
+
+          {/* Email Blocking Tab */}
+          <TabsContent value="email-blocking">
+            {user && <EmailBlockingManager userId={user.uid} />}
           </TabsContent>
         </Tabs>
       </div>

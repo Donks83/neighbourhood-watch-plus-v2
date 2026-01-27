@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/auth-context'
+import { isEmailBlocked, getBlockedEmailMessage } from '@/lib/email-blocking'
 import AddressCollectionForm from './address-collection-form'
 import type { UserAddress } from '@/types/camera'
 
@@ -110,6 +111,14 @@ export default function AuthDialog({
     setError(null)
     
     try {
+      // Check if email domain is blocked
+      const blocked = await isEmailBlocked(data.email)
+      if (blocked) {
+        setError(getBlockedEmailMessage(data.email))
+        setIsSubmitting(false)
+        return
+      }
+      
       // Store registration data and move to address collection
       setPendingRegistration(data)
       setMode('address')
