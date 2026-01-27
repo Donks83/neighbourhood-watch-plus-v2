@@ -178,17 +178,17 @@ export default function PricingPage() {
                       <li key={idx} className="flex items-start gap-2 text-sm">
                         {feature.included ? (
                           <Check className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
-                            feature.highlight ? 'text-teal-600' : 'text-green-600'
+                            (feature as any).highlight ? 'text-teal-600' : 'text-green-600'
                           }`} />
                         ) : (
                           <X className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
                         )}
                         <span className={`${
-                          feature.bold ? 'font-semibold' : ''
+                          (feature as any).bold ? 'font-semibold' : ''
                         } ${
                           !feature.included ? 'text-gray-400 line-through' : ''
                         } ${
-                          feature.highlight ? 'text-teal-600 font-medium' : ''
+                          (feature as any).highlight ? 'text-teal-600 font-medium' : ''
                         }`}>
                           {feature.name}
                         </span>
