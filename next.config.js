@@ -18,7 +18,21 @@ const nextConfig = {
   },
   experimental: {
     // Enable the latest features
-    serverComponentsExternalPackages: ['maplibre-gl'],
+    serverComponentsExternalPackages: ['maplibre-gl', '@sendgrid/mail'],
+  },
+  
+  // Webpack configuration to exclude SendGrid from client bundle
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Don't bundle SendGrid for client-side
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        '@sendgrid/mail': false,
+        '@sendgrid/client': false,
+        '@sendgrid/helpers': false,
+      }
+    }
+    return config
   },
   
   // Security Headers Configuration
