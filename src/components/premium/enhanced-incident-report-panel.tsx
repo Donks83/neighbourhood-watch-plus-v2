@@ -180,7 +180,7 @@ export default function EnhancedIncidentReportPanel({
       severity: 'medium',
       title: '',
       tags: [],
-      visibleTo: isCommunityUser ? ['police'] : ['police', 'insurance'],
+      visibleTo: isCommunityUser ? ['police'] : ['police', 'premium_business'],
       anonymousReporting: isCommunityUser, // Default to anonymous for community
       contactAllowed: !isCommunityUser, // Premium users allow contact by default
       requestEvidence: isPremiumUser,
