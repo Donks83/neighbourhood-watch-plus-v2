@@ -613,14 +613,16 @@ export default function HomePage() {
                             "ml-2 px-2 py-0.5 text-xs font-medium rounded-full flex-shrink-0",
                             userProfile?.role === 'super_admin' && "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
                             userProfile?.role === 'admin' && "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-                            (userProfile?.role === 'police' || userProfile?.role === 'insurance' || userProfile?.role === 'security') && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+                            userProfile?.role === 'business' && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+                            userProfile?.role === 'premium_business' && "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200",
+                            userProfile?.role === 'police' && "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200,
                             (!userProfile?.role || userProfile?.role === 'user') && "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
                           )}>
                             {userProfile?.role === 'super_admin' && 'Super Admin'}
                             {userProfile?.role === 'admin' && 'Admin'}
+                            {userProfile?.role === 'business' && 'Business'}
+                            {userProfile?.role === 'premium_business' && 'Premium Business'}
                             {userProfile?.role === 'police' && 'Police'}
-                            {userProfile?.role === 'insurance' && 'Insurance'}
-                            {userProfile?.role === 'security' && 'Security'}
                             {(!userProfile?.role || userProfile?.role === 'user') && 'User'}
                           </span>
                         </div>

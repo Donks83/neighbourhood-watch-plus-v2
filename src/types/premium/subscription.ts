@@ -5,7 +5,7 @@ import type { Location } from '../index'
 // USER SUBSCRIPTION SYSTEM
 // =============================================================================
 
-export type UserRole = 'community' | 'police' | 'insurance' | 'security' | 'admin'
+export type UserRole = 'user' | 'business' | 'premium_business' | 'police' | 'admin' | 'super_admin'
 
 export interface SubscriptionTier {
   id: string
