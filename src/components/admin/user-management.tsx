@@ -47,7 +47,6 @@ import {
 import { useAuth } from '@/contexts/auth-context'
 import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import { useToast } from '@/hooks/use-toast'
 import type { UserRoleType, UserRole } from '@/types/verification'
 import type { UserProfile } from '@/types/camera'
 
@@ -61,7 +60,6 @@ interface UserWithRole extends UserProfile {
 
 export default function UserManagement({ className }: UserManagementProps) {
   const { user } = useAuth()
-  const { toast } = useToast()
   const [users, setUsers] = useState<UserWithRole[]>([])
   const [filteredUsers, setFilteredUsers] = useState<UserWithRole[]>([])
   const [loading, setLoading] = useState(true)
@@ -70,6 +68,7 @@ export default function UserManagement({ className }: UserManagementProps) {
   const [roleFilter, setRoleFilter] = useState<'all' | UserRoleType>('all')
   const [processingUserId, setProcessingUserId] = useState<string | null>(null)
   const [assigningRole, setAssigningRole] = useState<{ userId: string; role: UserRoleType } | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   
   // Enhanced user details dialog
   const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null)
@@ -147,20 +146,14 @@ export default function UserManagement({ className }: UserManagementProps) {
         updatedAt: new Date()
       })
       
-      toast({
-        title: 'Limits Updated',
-        description: `Request limits updated for ${selectedUser.email}`
-      })
+      setSuccessMessage(`Request limits updated for ${selectedUser.email}`)
+      setTimeout(() => setSuccessMessage(null), 5000)
       
       setIsEditDialogOpen(false)
       await loadUsers()
     } catch (error) {
       console.error('Error updating limits:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to update request limits',
-        variant: 'destructive'
-      })
+      setError('Failed to update request limits')
     }
   }
 
@@ -347,6 +340,13 @@ export default function UserManagement({ className }: UserManagementProps) {
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {successMessage && (
+        <Alert className="bg-green-50 border-green-200">
+          <CheckCircle className="w-4 h-4 text-green-600" />
+          <AlertDescription className="text-green-800">{successMessage}</AlertDescription>
         </Alert>
       )}
 
