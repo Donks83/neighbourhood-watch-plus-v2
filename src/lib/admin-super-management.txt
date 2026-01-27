@@ -1,0 +1,327 @@
+// ===== SUPER ADMIN USER MANAGEMENT =====
+
+/**
+ * Get all users with their roles and basic info
+ */
+async function getAllUsers(limitCount: number = 100): Promise<Array<UserProfile & { userRole: UserRole | null }>> {
+  try {
+    const usersQuery = query(collection(db, 'users'), limit(limitCount))
+    const usersSnapshot = await getDocs(usersQuery)
+    
+    const users = await Promise.all(
+      usersSnapshot.docs.map(async (userDoc) => {
+        const userData = userDoc.data() as UserProfile
+        const userRole = await getUserRole(userDoc.id)
+        
+        return {
+          ...userData,
+          userRole
+        }
+      })
+    )
+    
+    return users
+  } catch (error) {
+    console.error('❌ Error getting all users:', error)
+    throw error
+  }
+}
+
+/**
+ * Get all admin users
+ */
+async function getAllAdmins(): Promise<UserRole[]> {
+  try {
+    const rolesQuery = query(
+      collection(db, 'user_roles'),
+      where('role', 'in', ['admin', 'super_admin'])
+    )
+    
+    const snapshot = await getDocs(rolesQuery)
+    return snapshot.docs.map(doc => doc.data() as UserRole)
+  } catch (error) {
+    console.error('❌ Error getting admins:', error)
+    throw error
+  }
+}
+
+/**
+ * Revoke user role (remove admin access)
+ */
+async function revokeUserRole(
+  userId: string,
+  revokedByUserId: string,
+  reason?: string
+): Promise<void> {
+  try {
+    // Check if revoking user has permission
+    const canRevoke = await hasPermission(revokedByUserId, 'canManageUsers')
+    if (!canRevoke) {
+      throw new Error('Insufficient permissions to revoke roles')
+    }
+    
+    // Don't allow self-revocation
+    if (userId === revokedByUserId) {
+      throw new Error('Cannot revoke your own admin role')
+    }
+    
+    // Log the action before revoking
+    await logAdminAction(
+      revokedByUserId,
+      'role_revoked',
+      `Revoked admin role from user ${userId}`,
+      { userId, reason }
+    )
+    
+    // Delete role document
+    await deleteDoc(doc(db, 'user_roles', userId))
+    
+    // Update user profile
+    const userRef = doc(db, 'users', userId)
+    await updateDoc(userRef, {
+      role: null,
+      lastActiveAt: serverTimestamp()
+    })
+    
+    console.log(`✅ Revoked role for user ${userId}`)
+  } catch (error) {
+    console.error('❌ Error revoking role:', error)
+    throw error
+  }
+}
+
+/**
+ * Toggle admin active status
+ */
+async function toggleAdminStatus(
+  userId: string,
+  toggledByUserId: string,
+  isActive: boolean,
+  reason?: string
+): Promise<void> {
+  try {
+    // Check permissions
+    const canToggle = await hasPermission(toggledByUserId, 'canManageUsers')
+    if (!canToggle) {
+      throw new Error('Insufficient permissions to toggle admin status')
+    }
+    
+    // Don't allow self-deactivation
+    if (userId === toggledByUserId && !isActive) {
+      throw new Error('Cannot deactivate your own admin account')
+    }
+    
+    // Log the action
+    await logAdminAction(
+      toggledByUserId,
+      isActive ? 'admin_activated' : 'admin_deactivated',
+      `${isActive ? 'Activated' : 'Deactivated'} admin ${userId}`,
+      { userId, reason }
+    )
+    
+    // Update role
+    const roleRef = doc(db, 'user_roles', userId)
+    await updateDoc(roleRef, {
+      isActive,
+      lastActiveAt: serverTimestamp()
+    })
+    
+    console.log(`✅ ${isActive ? 'Activated' : 'Deactivated'} admin ${userId}`)
+  } catch (error) {
+    console.error('❌ Error toggling admin status:', error)
+    throw error
+  }
+}
+
+// ===== ADMIN ACTIVITY LOGGING =====
+
+export interface AdminActionLog {
+  id: string
+  adminId: string
+  adminEmail: string
+  action: string
+  description: string
+  metadata?: Record<string, any>
+  timestamp: Timestamp
+  ipAddress?: string
+}
+
+/**
+ * Log admin action
+ */
+async function logAdminAction(
+  adminId: string,
+  action: string,
+  description: string,
+  metadata?: Record<string, any>
+): Promise<void> {
+  try {
+    // Get admin details
+    const userRef = doc(db, 'users', adminId)
+    const userDoc = await getDoc(userRef)
+    
+    if (!userDoc.exists()) {
+      console.warn('Admin user not found for logging:', adminId)
+      return
+    }
+    
+    const user = userDoc.data() as UserProfile
+    
+    const logEntry: AdminActionLog = {
+      id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      adminId,
+      adminEmail: user.email,
+      action,
+      description,
+      metadata,
+      timestamp: serverTimestamp() as Timestamp
+    }
+    
+    // Save to admin_logs collection
+    await setDoc(doc(db, 'admin_logs', logEntry.id), logEntry)
+  } catch (error) {
+    console.error('❌ Error logging admin action:', error)
+    // Don't throw - logging failure shouldn't break operations
+  }
+}
+
+/**
+ * Get admin activity logs
+ */
+async function getAdminActivityLogs(
+  options: {
+    adminId?: string
+    action?: string
+    startDate?: Date
+    endDate?: Date
+    limit?: number
+  } = {}
+): Promise<AdminActionLog[]> {
+  try {
+    let logsQuery = query(collection(db, 'admin_logs'))
+    
+    // Apply filters
+    if (options.adminId) {
+      logsQuery = query(logsQuery, where('adminId', '==', options.adminId))
+    }
+    
+    if (options.action) {
+      logsQuery = query(logsQuery, where('action', '==', options.action))
+    }
+    
+    if (options.startDate) {
+      logsQuery = query(
+        logsQuery, 
+        where('timestamp', '>=', Timestamp.fromDate(options.startDate))
+      )
+    }
+    
+    if (options.endDate) {
+      logsQuery = query(
+        logsQuery, 
+        where('timestamp', '<=', Timestamp.fromDate(options.endDate))
+      )
+    }
+    
+    // Order by timestamp descending (most recent first)
+    logsQuery = query(logsQuery, orderBy('timestamp', 'desc'))
+    
+    // Apply limit
+    if (options.limit) {
+      logsQuery = query(logsQuery, limit(options.limit))
+    } else {
+      logsQuery = query(logsQuery, limit(100)) // Default limit
+    }
+    
+    const snapshot = await getDocs(logsQuery)
+    return snapshot.docs.map(doc => doc.data() as AdminActionLog)
+  } catch (error) {
+    console.error('❌ Error getting admin logs:', error)
+    throw error
+  }
+}
+
+/**
+ * Get admin statistics
+ */
+async function getAdminStats(): Promise<{
+  totalAdmins: number
+  activeAdmins: number
+  inactiveAdmins: number
+  superAdmins: number
+  recentActivity: number // Actions in last 24h
+  topAdmins: Array<{ adminId: string; adminEmail: string; actionCount: number }>
+}> {
+  try {
+    // Get all admins
+    const allAdmins = await getAllAdmins()
+    
+    const stats = {
+      totalAdmins: allAdmins.length,
+      activeAdmins: allAdmins.filter(a => a.isActive).length,
+      inactiveAdmins: allAdmins.filter(a => !a.isActive).length,
+      superAdmins: allAdmins.filter(a => a.role === 'super_admin').length,
+      recentActivity: 0,
+      topAdmins: [] as Array<{ adminId: string; adminEmail: string; actionCount: number }>
+    }
+    
+    // Get recent activity (last 24h)
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    
+    const recentLogs = await getAdminActivityLogs({
+      startDate: yesterday,
+      limit: 1000
+    })
+    
+    stats.recentActivity = recentLogs.length
+    
+    // Calculate top admins
+    const actionCounts = new Map<string, { email: string; count: number }>()
+    
+    recentLogs.forEach(log => {
+      const existing = actionCounts.get(log.adminId)
+      if (existing) {
+        existing.count++
+      } else {
+        actionCounts.set(log.adminId, { email: log.adminEmail, count: 1 })
+      }
+    })
+    
+    stats.topAdmins = Array.from(actionCounts.entries())
+      .map(([adminId, data]) => ({
+        adminId,
+        adminEmail: data.email,
+        actionCount: data.count
+      }))
+      .sort((a, b) => b.actionCount - a.actionCount)
+      .slice(0, 5)
+    
+    return stats
+  } catch (error) {
+    console.error('❌ Error getting admin stats:', error)
+    throw error
+  }
+}
+
+/**
+ * Search users by email or name
+ */
+async function searchUsers(searchTerm: string, limitCount: number = 50): Promise<Array<UserProfile & { userRole: UserRole | null }>> {
+  try {
+    // Get all users (we'll filter client-side since Firestore doesn't support text search)
+    const allUsers = await getAllUsers(200)
+    
+    const searchLower = searchTerm.toLowerCase()
+    
+    return allUsers
+      .filter(user => 
+        user.email.toLowerCase().includes(searchLower) ||
+        user.displayName?.toLowerCase().includes(searchLower)
+      )
+      .slice(0, limitCount)
+  } catch (error) {
+    console.error('❌ Error searching users:', error)
+    throw error
+  }
+}
