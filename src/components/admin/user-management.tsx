@@ -14,7 +14,10 @@ import {
   Calendar,
   MoreVertical,
   Ban,
-  CheckCircle
+  CheckCircle,
+  Eye,
+  Settings,
+  Activity
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,7 +31,23 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs'
 import { useAuth } from '@/contexts/auth-context'
+import { doc, updateDoc } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
+import { useToast } from '@/hooks/use-toast'
 import type { UserRoleType, UserRole } from '@/types/verification'
 import type { UserProfile } from '@/types/camera'
 
@@ -42,6 +61,7 @@ interface UserWithRole extends UserProfile {
 
 export default function UserManagement({ className }: UserManagementProps) {
   const { user } = useAuth()
+  const { toast } = useToast()
   const [users, setUsers] = useState<UserWithRole[]>([])
   const [filteredUsers, setFilteredUsers] = useState<UserWithRole[]>([])
   const [loading, setLoading] = useState(true)
@@ -50,6 +70,14 @@ export default function UserManagement({ className }: UserManagementProps) {
   const [roleFilter, setRoleFilter] = useState<'all' | UserRoleType>('all')
   const [processingUserId, setProcessingUserId] = useState<string | null>(null)
   const [assigningRole, setAssigningRole] = useState<{ userId: string; role: UserRoleType } | null>(null)
+  
+  // Enhanced user details dialog
+  const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [editingLimits, setEditingLimits] = useState({
+    weeklyLimit: 3,
+    monthlyLimit: 12
+  })
 
   // Load all users
   const loadUsers = useCallback(async () => {
@@ -96,6 +124,45 @@ export default function UserManagement({ className }: UserManagementProps) {
 
     setFilteredUsers(filtered)
   }, [users, roleFilter, searchTerm])
+
+  // Open user details dialog
+  const openUserDetails = (userItem: UserWithRole) => {
+    setSelectedUser(userItem)
+    setEditingLimits({
+      weeklyLimit: userItem.rateLimits?.weeklyLimit || 3,
+      monthlyLimit: userItem.rateLimits?.monthlyLimit || 12
+    })
+    setIsEditDialogOpen(true)
+  }
+
+  // Update user request limits
+  const updateUserLimits = async () => {
+    if (!selectedUser) return
+    
+    try {
+      const userRef = doc(db, 'users', selectedUser.uid)
+      await updateDoc(userRef, {
+        'rateLimits.weeklyLimit': editingLimits.weeklyLimit,
+        'rateLimits.monthlyLimit': editingLimits.monthlyLimit,
+        updatedAt: new Date()
+      })
+      
+      toast({
+        title: 'Limits Updated',
+        description: `Request limits updated for ${selectedUser.email}`
+      })
+      
+      setIsEditDialogOpen(false)
+      await loadUsers()
+    } catch (error) {
+      console.error('Error updating limits:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to update request limits',
+        variant: 'destructive'
+      })
+    }
+  }
 
   // Assign role
   const handleAssignRole = useCallback(async (userId: string, role: UserRoleType) => {
@@ -346,6 +413,12 @@ export default function UserManagement({ className }: UserManagementProps) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {/* View & Edit Details - NEW! */}
+                        <DropdownMenuItem onClick={() => openUserDetails(userItem)}>
+                          <Eye className="w-4 h-4 mr-2" />
+                          View & Edit Details
+                        </DropdownMenuItem>
+                        
                         {!userItem.userRole || userItem.userRole.role === 'user' ? (
                           <>
                             <DropdownMenuItem onClick={() => handleAssignRole(userItem.uid, 'business')}>
@@ -446,6 +519,203 @@ export default function UserManagement({ className }: UserManagementProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Enhanced User Details Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>User Management</DialogTitle>
+            <DialogDescription>
+              View and manage settings for {selectedUser?.email}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedUser && (
+            <Tabs defaultValue="details" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="limits">Request Limits</TabsTrigger>
+                <TabsTrigger value="stats">Statistics</TabsTrigger>
+              </TabsList>
+
+              {/* Details Tab */}
+              <TabsContent value="details" className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-semibold">Display Name</Label>
+                    <p className="text-sm text-gray-600">{selectedUser.displayName || 'Not set'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-semibold">Email</Label>
+                    <p className="text-sm text-gray-600">{selectedUser.email}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-semibold">Role</Label>
+                    <div className="mt-1">{getRoleBadge(selectedUser.userRole?.role)}</div>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-semibold">Status</Label>
+                    <div className="mt-1">
+                      <Badge variant={selectedUser.userRole?.isActive === false ? 'destructive' : 'default'}>
+                        {selectedUser.userRole?.isActive === false ? 'Inactive' : 'Active'}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-semibold">Joined</Label>
+                    <p className="text-sm text-gray-600">
+                      {typeof selectedUser.createdAt === 'object' && 'toDate' in selectedUser.createdAt 
+                        ? selectedUser.createdAt.toDate().toLocaleDateString()
+                        : new Date(selectedUser.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-semibold">User ID</Label>
+                    <p className="text-sm text-gray-600 font-mono text-xs break-all">{selectedUser.uid}</p>
+                  </div>
+                </div>
+
+                {selectedUser.address && (
+                  <div>
+                    <Label className="text-sm font-semibold">Address</Label>
+                    <p className="text-sm text-gray-600">
+                      {selectedUser.address.formattedAddress || 'Not set'}
+                    </p>
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Request Limits Tab - THIS IS THE KEY FEATURE! */}
+              <TabsContent value="limits" className="space-y-4">
+                <Alert>
+                  <Settings className="w-4 h-4" />
+                  <AlertDescription>
+                    Adjust request limits for this user. Changes take effect immediately.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="weeklyLimit">Weekly Request Limit</Label>
+                    <Input
+                      id="weeklyLimit"
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={editingLimits.weeklyLimit}
+                      onChange={(e) => setEditingLimits({ ...editingLimits, weeklyLimit: parseInt(e.target.value) || 0 })}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Maximum footage requests per week (default: 3 for Public tier)
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="monthlyLimit">Monthly Request Limit</Label>
+                    <Input
+                      id="monthlyLimit"
+                      type="number"
+                      min="0"
+                      max="500"
+                      value={editingLimits.monthlyLimit}
+                      onChange={(e) => setEditingLimits({ ...editingLimits, monthlyLimit: parseInt(e.target.value) || 0 })}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Maximum footage requests per month
+                    </p>
+                  </div>
+
+                  <div className="pt-4 border-t">
+                    <Label className="text-sm font-semibold mb-3 block">Current Usage</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Card>
+                        <CardContent className="pt-4">
+                          <p className="text-xs text-gray-500">This Week</p>
+                          <p className="text-2xl font-semibold">
+                            {selectedUser.rateLimits?.weeklyRequestCount || 0}
+                            <span className="text-sm text-gray-500"> / {selectedUser.rateLimits?.weeklyLimit || 3}</span>
+                          </p>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="pt-4">
+                          <p className="text-xs text-gray-500">Reset Date</p>
+                          <p className="text-sm font-medium">
+                            {selectedUser.rateLimits?.resetDate 
+                              ? new Date(selectedUser.rateLimits.resetDate).toLocaleDateString()
+                              : 'Not set'}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+
+                  <Button onClick={updateUserLimits} className="w-full" size="lg">
+                    <Settings className="w-4 h-4 mr-2" />
+                    Save Request Limits
+                  </Button>
+                </div>
+              </TabsContent>
+
+              {/* Statistics Tab */}
+              <TabsContent value="stats" className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium">Total Cameras</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-3xl font-bold">0</p>
+                      <p className="text-xs text-gray-500 mt-1">Registered cameras</p>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-3xl font-bold">0</p>
+                      <p className="text-xs text-gray-500 mt-1">Footage requests made</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium">Footage Shared</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-3xl font-bold">0</p>
+                      <p className="text-xs text-gray-500 mt-1">Times shared footage</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium">Account Age</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-3xl font-bold">
+                        {Math.floor((Date.now() - (typeof selectedUser.createdAt === 'object' && 'toDate' in selectedUser.createdAt 
+                          ? selectedUser.createdAt.toDate().getTime()
+                          : new Date(selectedUser.createdAt).getTime())) / (1000 * 60 * 60 * 24))}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">Days since joining</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Alert>
+                  <Activity className="w-4 h-4" />
+                  <AlertDescription>
+                    Detailed activity logs and statistics will be available here in a future update.
+                  </AlertDescription>
+                </Alert>
+              </TabsContent>
+            </Tabs>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
