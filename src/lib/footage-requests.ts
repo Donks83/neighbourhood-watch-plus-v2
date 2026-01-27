@@ -337,7 +337,8 @@ async function createNotificationsForRequest(
               ownerMarkers[0].marker.ownerEmail,
               ownerMarkers[0].marker.ownerName || 'Neighbour',
               request.incidentType,
-              matchDistance
+              matchDistance,
+              request.id
             )
             console.log(`✅ Email sent to ${ownerMarkers[0].marker.ownerEmail}`)
           } catch (emailError) {
