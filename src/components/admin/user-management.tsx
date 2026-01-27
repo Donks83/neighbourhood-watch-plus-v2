@@ -579,7 +579,9 @@ export default function UserManagement({ className }: UserManagementProps) {
                   <div>
                     <Label className="text-sm font-semibold">Address</Label>
                     <p className="text-sm text-gray-600">
-                      {selectedUser.address.formattedAddress || 'Not set'}
+                      {(selectedUser.address as any).formattedAddress || 
+                       `${selectedUser.address.street || ''}, ${selectedUser.address.city || ''}, ${selectedUser.address.postcode || ''}`.trim().replace(/^,\s*/, '').replace(/,\s*$/, '') || 
+                       'Not set'}
                     </p>
                   </div>
                 )}
