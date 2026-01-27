@@ -183,8 +183,8 @@ export default function UserManagement({ className }: UserManagementProps) {
       super_admin: { icon: Crown, label: 'Super Admin', className: 'bg-purple-600 text-white' },
       admin: { icon: ShieldCheck, label: 'Admin', className: 'bg-blue-600 text-white' },
       police: { icon: Shield, label: 'Police', className: 'bg-indigo-600 text-white' },
-      insurance: { icon: ShieldAlert, label: 'Insurance', className: 'bg-teal-600 text-white' },
-      security: { icon: ShieldCheck, label: 'Security', className: 'bg-gray-600 text-white' }
+      premium_business: { icon: ShieldAlert, label: 'Premium Business', className: 'bg-teal-600 text-white' },
+      business: { icon: Users, label: 'Business', className: 'bg-green-600 text-white' }
     }
     
     const config = roleConfig[role as keyof typeof roleConfig]
@@ -266,12 +266,12 @@ export default function UserManagement({ className }: UserManagementProps) {
               className="px-4 py-2 border border-gray-300 rounded-md"
             >
               <option value="all">All Roles</option>
-              <option value="user">Users</option>
+              <option value="user">Public (FREE)</option>
+              <option value="business">Business (£49/mo)</option>
+              <option value="premium_business">Premium Business</option>
+              <option value="police">Police</option>
               <option value="admin">Admins</option>
               <option value="super_admin">Super Admins</option>
-              <option value="police">Police</option>
-              <option value="insurance">Insurance</option>
-              <option value="security">Security</option>
             </select>
           </div>
         </CardContent>
@@ -348,30 +348,36 @@ export default function UserManagement({ className }: UserManagementProps) {
                       <DropdownMenuContent align="end">
                         {!userItem.userRole || userItem.userRole.role === 'user' ? (
                           <>
-                            <DropdownMenuItem onClick={() => handleAssignRole(userItem.uid, 'admin')}>
-                              <ShieldCheck className="w-4 h-4 mr-2" />
-                              Make Admin
+                            <DropdownMenuItem onClick={() => handleAssignRole(userItem.uid, 'business')}>
+                              <Users className="w-4 h-4 mr-2" />
+                              Make Business
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleAssignRole(userItem.uid, 'premium_business')}>
+                              <ShieldAlert className="w-4 h-4 mr-2" />
+                              Make Premium Business
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleAssignRole(userItem.uid, 'police')}>
                               <Shield className="w-4 h-4 mr-2" />
                               Make Police
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleAssignRole(userItem.uid, 'insurance')}>
-                              <ShieldAlert className="w-4 h-4 mr-2" />
-                              Make Insurance
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleAssignRole(userItem.uid, 'security')}>
+                            <DropdownMenuItem onClick={() => handleAssignRole(userItem.uid, 'admin')}>
                               <ShieldCheck className="w-4 h-4 mr-2" />
-                              Make Security
+                              Make Admin
                             </DropdownMenuItem>
                           </>
                         ) : (
                           <>
                             {/* Role Change Options */}
-                            {userItem.userRole.role !== 'admin' && (
-                              <DropdownMenuItem onClick={() => handleAssignRole(userItem.uid, 'admin')}>
-                                <ShieldCheck className="w-4 h-4 mr-2" />
-                                Change to Admin
+                            {userItem.userRole.role !== 'business' && (
+                              <DropdownMenuItem onClick={() => handleAssignRole(userItem.uid, 'business')}>
+                                <Users className="w-4 h-4 mr-2" />
+                                Change to Business
+                              </DropdownMenuItem>
+                            )}
+                            {userItem.userRole.role !== 'premium_business' && (
+                              <DropdownMenuItem onClick={() => handleAssignRole(userItem.uid, 'premium_business')}>
+                                <ShieldAlert className="w-4 h-4 mr-2" />
+                                Change to Premium Business
                               </DropdownMenuItem>
                             )}
                             {userItem.userRole.role !== 'police' && (
@@ -380,16 +386,10 @@ export default function UserManagement({ className }: UserManagementProps) {
                                 Change to Police
                               </DropdownMenuItem>
                             )}
-                            {userItem.userRole.role !== 'insurance' && (
-                              <DropdownMenuItem onClick={() => handleAssignRole(userItem.uid, 'insurance')}>
-                                <ShieldAlert className="w-4 h-4 mr-2" />
-                                Change to Insurance
-                              </DropdownMenuItem>
-                            )}
-                            {userItem.userRole.role !== 'security' && (
-                              <DropdownMenuItem onClick={() => handleAssignRole(userItem.uid, 'security')}>
+                            {userItem.userRole.role !== 'admin' && (
+                              <DropdownMenuItem onClick={() => handleAssignRole(userItem.uid, 'admin')}>
                                 <ShieldCheck className="w-4 h-4 mr-2" />
-                                Change to Security
+                                Change to Admin
                               </DropdownMenuItem>
                             )}
                             
