@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/auth-context'
-import AdminVerificationQueue from '@/components/admin/admin-verification-queue'
+import AdminVerificationQueueEnhanced from '@/components/admin/admin-verification-queue-enhanced'
 import EmailBlockingManager from '@/components/admin/email-blocking-manager'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -588,7 +588,7 @@ export default function AdminPage() {
 
           {/* Verification Tab */}
           <TabsContent value="verification">
-            <AdminVerificationQueue />
+            <AdminVerificationQueueEnhanced />
           </TabsContent>
 
           {/* Email Blocking Tab */}
