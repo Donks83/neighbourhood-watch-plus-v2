@@ -101,7 +101,7 @@ function getDefaultPermissions(roleType: UserRoleType): UserPermissions {
       canDeleteContent: false,
       canExportData: false
     },
-    insurance: {
+    premium_business: {
       canVerifyCameras: false,
       canManageUsers: false,
       canViewAnalytics: false,
@@ -110,7 +110,7 @@ function getDefaultPermissions(roleType: UserRoleType): UserPermissions {
       canDeleteContent: false,
       canExportData: false
     },
-    security: {
+    business: {
       canVerifyCameras: false,
       canManageUsers: false,
       canViewAnalytics: false,
