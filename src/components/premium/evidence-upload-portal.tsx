@@ -61,7 +61,7 @@ interface EvidenceRequest {
   timeWindow: { start: Date; end: Date }
   requestedBy: {
     organization: string
-    role: 'police' | 'insurance' | 'security'
+    role: 'police' | 'premium_business' | 'business'
     badgeNumber?: string
   }
   legalBasis: string

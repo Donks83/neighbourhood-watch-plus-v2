@@ -244,7 +244,7 @@ export default function SubscriptionPortal({
                 />
               </div>
             )}
-            {(selectedRole === 'insurance' || selectedRole === 'security') && (
+            {(selectedRole === 'premium_business' || selectedRole === 'business') && (
               <div>
                 <Label htmlFor="license">License Number</Label>
                 <Input
