@@ -24,7 +24,7 @@ export interface FuzzyLocation {
 
 export class LocationPrivacyManager {
   private readonly DEFAULT_SETTINGS: LocationPrivacySettings = {
-    exactLocationAccess: ['police', 'insurance', 'admin'],
+    exactLocationAccess: ['police', 'premium_business', 'admin', 'super_admin'],
     fuzzyRadius: 25, // 25 meter radius = 50 meter diameter
     minimumDistance: 10, // Minimum 10 meters between fuzzy points
     preserveRelativePositions: true
