@@ -19,6 +19,15 @@ export interface UserProfile {
   address?: UserAddress
   verified: boolean
   
+  // Rate limiting
+  rateLimits?: {
+    weeklyRequestCount?: number
+    weeklyLimit?: number
+    monthlyLimit?: number
+    resetDate?: any
+    lastRequestDate?: any
+  }
+  
   // Enhanced trust score system v2.0
   enhancedTrustScore: EnhancedTrustScore
   
