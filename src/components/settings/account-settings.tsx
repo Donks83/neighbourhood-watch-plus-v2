@@ -49,7 +49,7 @@ export default function AccountSettings() {
     setDeleteError(null)
     
     try {
-      await deleteUserAccount(user.uid)
+      await deleteUserAccount(user.uid, user)
       await logout()
       router.push('/')
     } catch (error: any) {
