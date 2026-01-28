@@ -148,7 +148,7 @@ export default function CameraPopupConfig({
 
       // Create verification evidence with photos and notes
       const evidence: VerificationEvidence = {
-        photos: photoUrls.length > 0 ? photoUrls : undefined,
+        photos: photoUrls.length > 0 ? photoUrls : [],
         userNotes: data.userNotes || 'Camera registered through property dashboard'
       }
 
